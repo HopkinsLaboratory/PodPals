@@ -22,33 +22,36 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function):
         else:
             raise KeyboardInterrupt('User has opted not to open the GUI without checking for updates. The GUI launcher will now be closed.')
     
-    #get the name of the Fortran source code on the local system and from GitHub, as this will change over time
-    #from local system
     top_dir = os.path.dirname(root)
-    f_files_local = [file for file in os.listdir(top_dir) if file.endswith('.f')]
-
-    if f_files_local:
-        f_file_local = f_files_local[0]
-
-    #from github clone
-    f_files_git = [file for file in os.listdir(temp_dir) if file.endswith('.f')]
-    if f_files_git:
-        f_file_git = f_files_git[0]
 
     # A handy dictionary to hold the paths of the files to be updated for subsequent looping. Syntax is as follows- Path to local file : Path to cloned GitHub file
 
     update_files = {
-        str(os.path.join(top_dir, f_file_local)): str(os.path.join(temp_dir, f_file_git)), #fortran code
-        str(os.path.join(top_dir, 'Manual', 'MobCal-MPI_User_manual.pdf')): str(os.path.join(temp_dir, 'Manual', 'MobCal-MPI_User_manual.pdf')), #manual
+        str(os.path.join(top_dir, 'Sample_Files')): str(os.path.join(temp_dir, 'Sample_Files')), #Sample files to accompany to GUI
+        str(os.path.join(top_dir, 'Documentation.docx')): str(os.path.join(temp_dir, 'Documentation.docx')), #GUI documentation
         str(os.path.join(root, 'Launcher.py')): str(os.path.join(temp_dir, 'GUI', 'Launcher.py')), #GUI launcher
         str(os.path.join(root, 'gui', 'Update.py')): str(os.path.join(temp_dir, 'GUI', 'gui', 'Update.py')), #Update function
-        str(os.path.join(root, 'gui', 'Mobcal.py')): str(os.path.join(temp_dir, 'GUI', 'gui', 'Mobcal.py')), #GUI layout file
-        str(os.path.join(root, 'mfj_creator', 'mfj_creator.py')): str(os.path.join(temp_dir, 'GUI', 'mfj_creator', 'mfj_creator.py')), #mfj creator .py file
-        str(os.path.join(root, 'mfj_creator', 'Python', 'Main.py')): str(os.path.join(temp_dir, 'GUI', 'mfj_creator', 'Python', 'Main.py')), #.mfj creator .py function
-        str(os.path.join(root, 'mfj_creator', 'Python', 'xyz_to_mfj.py')): str(os.path.join(temp_dir, 'GUI', 'mfj_creator', 'Python', 'xyz_to_mfj.py')), #.mfj creator xyz to mfj converter
-        str(os.path.join(root, 'mfj_creator', 'Python', 'mass.prm')): str(os.path.join(temp_dir, 'GUI', 'mfj_creator', 'Python', 'mass.prm')), # param file with MMFF94 atom mass info
-        str(os.path.join(root, 'mfj_creator', 'Python', 'vdW.prm')): str(os.path.join(temp_dir, 'GUI', 'mfj_creator', 'Python', 'vdW.prm')), # param file with MMFF94 atom vdW info
-        str(os.path.join(root, 'output_analyzer', 'mout_Analyser.py')): str(os.path.join(temp_dir, 'GUI', 'output_analyzer', 'mout_Analyser.py')), #mout analyzer .py file
+        str(os.path.join(root, 'gui', 'ORCA_Analysis_GUI.py')): str(os.path.join(temp_dir, 'GUI', 'gui', 'ORCA_Analysis_GUI.py')), #GUI layout file
+
+        str(os.path.join(root, 'Python', 'atom_mass.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'atom_mass.py')), #py file with Atom masses 
+        str(os.path.join(root, 'Python', 'constants_and_conversions.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'constants_and_conversions.py')), #py file with fundamental contants & functions for unit conversions 
+
+        str(os.path.join(root, 'Python', 'Input_Output_operations', 'xyz_file_splitter.py')): str(os.path.join(temp_dir, 'Python', 'Input_Output_operations', 'xyz_file_splitter.py')), # T1 - xyz file splitter
+        str(os.path.join(root, 'Python', 'Input_Output_operations', 'Gaussian_gjf_to_ORCA_input.py')): str(os.path.join(temp_dir, 'Python', 'Input_Output_operations', 'Gaussian_gjf_to_ORCA_input.py')), # T2 - gjf to ORCA .inp
+        str(os.path.join(root, 'Python', 'Input_Output_operations', 'cosine_sim.py')): str(os.path.join(temp_dir, 'Python', 'Input_Output_operations', 'cosine_sim.py')), #T3 - cosine similarity sorting
+        str(os.path.join(root, 'Python', 'Input_Output_operations', 'ORCA_out_to_ORCA_inp.py')): str(os.path.join(temp_dir, 'Python', 'Input_Output_operations', 'ORCA_out_to_ORCA_inp.py')), #T4- ORCA .out to ORCA .inp
+        str(os.path.join(root, 'Python', 'Input_Output_operations', 'ORCA_out_to_ORCA_TDDFT_VG.py')): str(os.path.join(temp_dir, 'Python', 'Input_Output_operations', 'ORCA_out_to_ORCA_TDDFT_VG.py')), # T5 - ORCA .out to ORCA .inp to VGFC simluations (TD-DFT)
+        
+        str(os.path.join(root, 'Python', 'ORCA_out_analyses', 'ORCA_opt_plt.py')): str(os.path.join(temp_dir, 'Python', 'ORCA_out_analyses', 'ORCA_opt_plt.py')), # T6 - plotting the ORCA optimiation routine's progress 
+        str(os.path.join(root, 'Python', 'ORCA_out_analyses', 'ORCA_Thermochem_Calculator.py')): str(os.path.join(temp_dir, 'Python', 'ORCA_out_analyses', 'ORCA_Thermochem_Calculator.py')), # T7 - Calculates thermochem from ORCA .out files 
+        str(os.path.join(root, 'Python', 'ORCA_out_analyses', 'ORCA_CCSDT.py')): str(os.path.join(temp_dir, 'Python', 'ORCA_out_analyses', 'ORCA_CCSDT.py')), # T8 - Extracts CCSDT energies from ORCA .out files 
+        str(os.path.join(root, 'Python', 'ORCA_out_analyses', 'extract_IR.py')): str(os.path.join(temp_dir, 'Python', 'ORCA_out_analyses', 'extract_IR.py')), # T9 - Exacts and plots IR spectra from ORCA .out files
+        str(os.path.join(root, 'Python', 'ORCA_out_analyses', 'extract_ESD_spectrum_root_files.py')): str(os.path.join(temp_dir, 'Python', 'ORCA_out_analyses', 'extract_ESD_spectrum_root_files.py')), # T10 - Extract & plot UV spectra from .spectrum.root files
+        str(os.path.join(root, 'Python', 'ORCA_out_analyses', 'extract_ESD_spectrum_files.py')): str(os.path.join(temp_dir, 'Python', 'ORCA_out_analyses', 'extract_ESD_spectrum_files.py')), # T10 - Extract & plot UV spectra from .spectrum files
+    
+    
+        str(os.path.join(root, 'Python', 'Special_Analyses', 'BW_CCS_Analyzer.py')): str(os.path.join(temp_dir, 'Python', 'ORCA_out_analyses', 'BW_CCS_Analyzer.py')), # T11 - Boltzmann-weighted CCS calculator
+        str(os.path.join(root, 'Python', 'Special_Analyses', 'LED_Analyzer.py')): str(os.path.join(temp_dir, 'Python', 'ORCA_out_analyses', 'LED_Analyzer.py')), # T12 - ORCA LED analysis tool
     }
     
     #update process for Windows users
