@@ -29,7 +29,7 @@ from Python.Special_Analyses.BW_CCS_Analyzer import BW_CCS_Analysis
 #Import the GitHub update function
 from gui.Update import Update_GUI_files
 
-'''
+
 class TextRedirect(StringIO):
     #Constructor (__init__ method) for the custom stream class
     def __init__(self, update_output=None, *args, **kwargs):
@@ -48,13 +48,14 @@ class TextRedirect(StringIO):
         
         #Invoke the stored callback function to notify external components with the written text
         self.update_output(text)
-'''
+
 class ORCAAnalysisSuite(QMainWindow):
     def __init__(self):
         super().__init__()
 
         self.output_text_edit = QTextEdit()
-        #self.text_redirector = TextRedirect(update_output=self.update_output_text)
+        self.text_redirector = TextRedirect(update_output=self.update_output_text)
+        sys.stdout = self.text_redirector
 
         self.initUI()
 
@@ -147,10 +148,16 @@ class ORCAAnalysisSuite(QMainWindow):
         
         self.setCentralWidget(main_widget)
 
-        #sys.stdout = self.text_redirector
+        sys.stdout = self.text_redirector
 
     def update_output_text(self, text):
         self.output_text_edit.insertPlainText(text)
+        QApplication.processEvents()
+
+    def closeEvent(self, event):
+        #Restore original stdout before closing the application
+        sys.stdout = sys.__stdout__
+        super().closeEvent(event)
 
     def check_for_update_and_prompt(self):
         
