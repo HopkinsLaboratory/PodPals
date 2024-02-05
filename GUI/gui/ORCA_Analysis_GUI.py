@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QApplication, QHBoxLayout, QComboBox, QMainWindow, Q
 from PyQt6.QtCore import QCoreApplication, Qt
 from PyQt6.QtGui import QScreen
 
-import sys, traceback, os, time
+import os, time, sys, subprocess, traceback
 from datetime import datetime
 from io import StringIO
 
@@ -15,7 +15,7 @@ from Python.Input_Output_operations.ORCA_out_to_ORCA_TDDFT_VG import ORCA_out_to
 
 #Import the functions for the output analysis Tab
 from Python.ORCA_out_analyses.ORCA_opt_plt import ORCA_opt_plt
-from Python.ORCA_out_analyses.ORCA_Thermochem_calculator import ORCA_Thermochem_Calculator
+from Python.ORCA_out_analyses.ORCA_Thermochem_Calculator import ORCA_Thermochem_Calculator
 from Python.ORCA_out_analyses.ORCA_CCSDT import ORCA_CCSDT
 from Python.ORCA_out_analyses.extract_IR import extract_IR_spectra
 from Python.ORCA_out_analyses.extract_ESD_spectrum_files import extract_ESD_spectrum_files
@@ -204,15 +204,16 @@ class ORCAAnalysisSuite(QMainWindow):
                 pass
 
             except Exception as e: 
-                print(f'An unexpected error encountered trying to remove {directory}: {e}.\n Please report this error and your workflow / system specs to the Issues section on Github.')         
+                print(f'An unexpected error encountered trying to remove {directory}: {e}.\n Please report this error and your workflow / system specs to the Issues section on Github. You can delete still delete the /temp manually.')         
                 # Get the current working directory and define the temporary directory path
-                root = os.getcwd()
-                return
+                pass
 
         '''Main Update function'''
 
+        root = os.getcwd()
+
         #URL of the MobCal-MPI repo
-        repo_url = 'https://github.com/HopkinsLaboratory/MobCal-MPI' #    !!!!!!!!!update
+        repo_url = 'https://github.com/HopkinsLaboratory/ORCA_Analysis_GUI'
 
         #get SHA value of repo-ID
         repo_SHA = get_latest_commit_sha(repo_url)
