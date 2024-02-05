@@ -1,8 +1,8 @@
 from PyQt6.QtWidgets import QApplication, QHBoxLayout, QComboBox, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QMessageBox, QLabel, QGroupBox, QLineEdit, QPushButton, QFileDialog, QTextEdit, QCheckBox, QSpinBox, QSizePolicy, QDoubleSpinBox
-from PyQt6.QtCore import QCoreApplication, Qt
+from PyQt6.QtCore import QCoreApplication, Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QScreen
 
-import os, time, sys, subprocess, traceback
+import platform, os, time, shutil, stat, sys, subprocess, traceback
 from datetime import datetime
 from io import StringIO
 
@@ -29,6 +29,7 @@ from Python.Special_Analyses.BW_CCS_Analyzer import BW_CCS_Analysis
 #Import the GitHub update function
 from gui.Update import Update_GUI_files
 
+'''
 class TextRedirect(StringIO):
     #Constructor (__init__ method) for the custom stream class
     def __init__(self, update_output=None, *args, **kwargs):
@@ -47,13 +48,31 @@ class TextRedirect(StringIO):
         
         #Invoke the stored callback function to notify external components with the written text
         self.update_output(text)
+'''
+class UpdateThread(QThread):
+    update_complete = pyqtSignal(bool, str)  # Signal to indicate update completion status and message
+
+    def __init__(self, repo_url, root, ID_file, repo_SHA, delete_dir_function):
+        QThread.__init__(self)
+        self.repo_url = repo_url
+        self.root = root
+        self.ID_file = ID_file
+        self.repo_SHA = repo_SHA
+        self.delete_dir_function = delete_dir_function
+
+    def run(self):
+        try:
+            Update_GUI_files(self.repo_url, self.root, self.ID_file, self.repo_SHA, self.delete_dir_function)
+            self.update_complete.emit(True, "Update completed successfully.")
+        except Exception as e:
+            self.update_complete.emit(False, f"Update failed: {e}")
 
 class ORCAAnalysisSuite(QMainWindow):
     def __init__(self):
         super().__init__()
 
         self.output_text_edit = QTextEdit()
-        self.text_redirector = TextRedirect(update_output=self.update_output_text)
+        #self.text_redirector = TextRedirect(update_output=self.update_output_text)
 
         self.initUI()
 
@@ -83,7 +102,7 @@ class ORCAAnalysisSuite(QMainWindow):
 
         #Sub-tabs for I/O operations, then add to main IO tab
 
-        self.xyz_file_splitter_tab = XYZFileSplitterTab(self.text_redirector)
+        self.xyz_file_splitter_tab = XYZFileSplitterTab(self.output_text_edit)
         IO_tab.addTab(self.xyz_file_splitter_tab, 'XYZ File Splitter')
 
         sub_tab2 = GJFtoORCAInputTab(self.output_text_edit)
@@ -146,13 +165,13 @@ class ORCAAnalysisSuite(QMainWindow):
         
         self.setCentralWidget(main_widget)
 
-        sys.stdout = self.text_redirector
+        #sys.stdout = self.text_redirector
 
     def update_output_text(self, text):
         self.output_text_edit.insertPlainText(text)
 
-    def check_for_update(self):
-
+    def check_for_update_and_prompt(self):
+        
         #The GUI is likely to the updated throughout the years, so its best practice to implement some update functionality - users may not check GitHub frequently. 
         def get_latest_commit_sha(repo_url, branch='HEAD'):
             '''Grabs the SHA value associated with the latest commit to a GitHub repo. Function takes a URL as input.''' 
@@ -259,6 +278,18 @@ class ORCAAnalysisSuite(QMainWindow):
 
             else:
                 print('The user has opted to use their local version of ORCA Analysis GUI.')
+
+        self.update_thread = UpdateThread(repo_url, root, ID_file, repo_SHA, delete_dir)
+        self.update_thread.update_complete.connect(self.on_update_complete)
+        self.update_thread.start()
+
+    def on_update_complete(self, success, message):
+        if success:
+            # Handle successful update, possibly prompt user to restart application
+            QMessageBox.information(self, "Update Complete", message)
+        else:
+            # Handle update failure, show error message
+            QMessageBox.critical(self, "Update Failed", message)
 
 class XYZFileSplitterTab(QWidget):
     def __init__(self, text_redirector, parent=None):

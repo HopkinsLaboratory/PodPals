@@ -67,6 +67,7 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function):
             # Write the logic to update each file
             for local_path, github_path in update_files.items():
                 opf.write(f'if os.path.isfile(r"{local_path}"): os.remove(r"{local_path}")\n')
+                opf.write(f'elif os.path.isdir(r"{local_path}"): shutil.rmtree(r"{local_path}")\n')
                 opf.write(f'shutil.move(r"{github_path}", r"{os.path.dirname(local_path)}")\n')
             opf.write('sys.exit(0)')
             
