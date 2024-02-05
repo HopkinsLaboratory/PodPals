@@ -16,11 +16,7 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function):
     except Exception as e: 
         print(f'Exception: {e}')
         print('Unable to access github to check for updates, likely due to lack of an internet connection...')
-        answer = input('Do you wish to proceed using the current version (y/n)?')
-        if answer == 'y':
-            return
-        else:
-            raise KeyboardInterrupt('User has opted not to open the GUI without checking for updates. The GUI launcher will now be closed.')
+        print('Please feel free to use the local version of the GUI and update once your internet connection is retored.')
     
     top_dir = os.path.dirname(root)
 
@@ -82,10 +78,12 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function):
             subprocess.Popen(['python', update_script_path], shell=True)
 
         except subprocess.SubprocessError as e:
-            print(f'An subprocess error occurred while executing {update_script_path}: {e}')
+            print(f'A subprocess error occurred while executing {update_script_path}: {e}')
+            return
 
         except Exception as e:
             print(f'An unexpected error occurred when trying execute {update_script_path}: {e}')
+            return
 
         with open(ID_file,'w') as opf:
             opf.write(repo_SHA)

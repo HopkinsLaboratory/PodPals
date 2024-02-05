@@ -262,8 +262,8 @@ class ORCAAnalysisSuite(QMainWindow):
                 #Run the update function
                 Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir)
 
-                print('The ORCA Analysis GUI files have been succesfully updated to their current version. The GUI will now close. Please reload the GUI')
-                sys.exit(0)
+                print('The ORCA Analysis GUI files have been succesfully updated to their current version. Please close and reload the GUI')
+                return
 
             else:
                 print('The user has opted to use their local version of ORCA Analysis GUI.')

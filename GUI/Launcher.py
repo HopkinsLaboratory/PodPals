@@ -224,7 +224,7 @@ def check_dependencies():
 
     if missing_dependencies:
         print('The following Python modules are missing. Please reclone the repo from Github and try again, ensuring the missing Python modules are present:', ",\n".join(missing_dependencies))
-        sys.exit(1)
+        return
 
 #Check for all dependencies
 check_dependencies()
