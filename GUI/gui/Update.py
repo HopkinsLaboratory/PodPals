@@ -50,8 +50,8 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function):
         str(os.path.join(root, 'Python', 'ORCA_out_analyses', 'extract_ESD_spectrum_files.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'ORCA_out_analyses', 'extract_ESD_spectrum_files.py')), # T10 - Extract & plot UV spectra from .spectrum files
     
     
-        str(os.path.join(root, 'Python', 'Special_Analyses', 'BW_CCS_Analyzer.py')): str(os.path.join(temp_dir, 'Python', 'ORCA_out_analyses', 'BW_CCS_Analyzer.py')), # T11 - Boltzmann-weighted CCS calculator
-        str(os.path.join(root, 'Python', 'Special_Analyses', 'LED_Analyzer.py')): str(os.path.join(temp_dir, 'Python', 'ORCA_out_analyses', 'LED_Analyzer.py')), # T12 - ORCA LED analysis tool
+        str(os.path.join(root, 'Python', 'Special_Analyses', 'BW_CCS_Analyzer.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'Special_Analyses', 'BW_CCS_Analyzer.py')), # T11 - Boltzmann-weighted CCS calculator
+        str(os.path.join(root, 'Python', 'Special_Analyses', 'LED_Analyzer.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'Special_Analyses', 'LED_Analyzer.py')), # T12 - ORCA LED analysis tool
     }
     
     #update process for Windows users
