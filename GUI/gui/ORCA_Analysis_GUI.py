@@ -25,7 +25,9 @@ from Python.ORCA_out_analyses.extract_ESD_spectrum_root_files import extract_ESD
 from Python.Special_Analyses.LED_Analyzer import LED_Analysis
 from Python.Special_Analyses.BW_CCS_Analyzer import BW_CCS_Analysis
 #from Python.Special_Analyses.NEB_Analyzer import NEB_Analyzer
-from Python.atom_mass import atom_masses
+
+#Import the GitHub update function
+from gui.Update import Update_GUI_files
 
 class TextRedirect(StringIO):
     #Constructor (__init__ method) for the custom stream class
