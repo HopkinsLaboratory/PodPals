@@ -1164,7 +1164,7 @@ class ORCA_Optim_plot_Tab(QWidget):
 
     def browse_OUT_file(self):
         #Open a file dialog to select a .out file
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select .out file", "", "OUT Files (*.out)")
+        file_path, _ = QFileDialog.getOpenFileName(self, 'Select .out file', '', 'OUT Files (*.out)')
 
         #Check if a file was selected
         if file_path:
@@ -1178,10 +1178,16 @@ class ORCA_Optim_plot_Tab(QWidget):
         if self.save_plot_checkbox.isChecked(): save_plot = True
         else: save_plot = False
 
+        #Input validation
         if not os.path.isfile(input_path):
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {input_path} is not a valid .out file. Please check that the directory you have specified is correct, then try again.')
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The input path must contain the directory and file name of a .out file. {input_path} does not lead to a not a valid file.')
             return
-            
+
+        elif not input_path.lower().endswith('.out'):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {os.path.basename(input_path)} does not have a .out extension. Please provide a .out valid file.')
+            return
+
+        #If the checks pass, run the analysis
         else:
             ORCA_opt_plt(input_path, save_plot)
 
@@ -1269,62 +1275,60 @@ class DFTThermochemTab(QWidget):
         self.setLayout(layout)
 
     def browse_directory(self):
-        directory_path = QFileDialog.getExistingDirectory(self, "Select Directory")
+        directory_path = QFileDialog.getExistingDirectory(self, 'Select Directory')
         if directory_path:
             self.directory_input.setText(directory_path)
 
     def run_dft_thermochemistry(self):
         input_path = self.directory_input.text()
         
-        #check that T, p, and vib scaling factor inputs are numeric inputs and are all non-negative numbers
+        #check that the input path is a real directory
+        if not os.path.isdir(input_path):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {input_path} is not a valid directory. Please check that the directory you have specified is correct, then try again.')
+            return
+        
+        #get T, p, and vib scaling factor what simultaneously checkthing that their inputs for correct format
         try:
             T = float(self.temp_input.text())
             if T < 0:
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: Temperature cannot be negative.')
+                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Temperature cannot be negative.')
                 return   
         except ValueError:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: Temperature input must be numeric.')
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Temperature input must be numeric.')
             return
 
         try:
             p = float(self.pressure_input.text())
             if p < 0:
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: Pressure cannot be negative.')
+                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Pressure cannot be negative.')
                 return    
         except ValueError:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: Pressure input must be numeric.')
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Pressure input must be numeric.')
             return
 
         try:
             vib_scl = float(self.vib_scaling_input.text())
 
-            if vib_scl < 0:
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: Vibrational scaling factor cannot be negative.')
-                return                
+            if vib_scl <= 0:
+                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Vibrational scaling factor cannot be zero or negative.')
+                return
+
         except ValueError:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: Vibrational scaling factor input must be numeric.')
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Vibrational scaling factor input must be numeric.')
             return
         
         #get sorting option
         sort_option = self.sort_by_combo.currentText()
         sort_by_map = {'Filename': 'F', 'Gibbs': 'G', 'Enthalpy (H)': 'H', 'Entropy (S)': 'S', 'Thermal Energy (E)': 'E', 'Zero-point energy': 'ZPE'}
-        sort_by = sort_by_map.get(sort_option, 'F')
+        sort_by = sort_by_map.get(sort_option, 'F') #get option based on combo-box selection, defaulting to filename sorting if an invalid option is chosen (which theoretically should never happen)
 
-        #check that the input path is a real directory, and if so, run the thermochem calculator code
-        try:
-            if not os.path.isdir(input_path):
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {input_path} is not a valid directory. Please check that the directory you have specified is correct, then try again.')
-            else:
-                if sort_option == 'Filename':
-                    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Thermochem is being analyzed at {T} K, {p} Pa. Output files will be sorted by energy according to the order of the {sort_option}s.')
-                else:
-                    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Thermochem is being analyzed at {T} K, {p} Pa. Output files will be sorted by energy according to the order of the {sort_option} energies.')
-                
-                #run the code
-                ORCA_Thermochem_Calculator(input_path, T, p, vib_scl, sort_by)
-
-        except Exception as e:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: {e}\n \nTraceback: {traceback.format_exc()}')
+        if sort_option == 'Filename':
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Thermochem is being analyzed at {T} K, {p} Pa. Output files will be sorted by energy according to the order of the {sort_option}s.')
+        else:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Thermochem is being analyzed at {T} K, {p} Pa. Output files will be sorted by energy according to the order of the {sort_option} energies.')
+        
+        #run the code
+        ORCA_Thermochem_Calculator(input_path, T, p, vib_scl, sort_by)
 
 class CCSDTTab(QWidget):
     def __init__(self, text_redirector, parent=None):

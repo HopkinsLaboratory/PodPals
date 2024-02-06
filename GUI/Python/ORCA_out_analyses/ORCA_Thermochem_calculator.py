@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime
 from Python.constants_and_conversions import c
 
+from PyQt6.QtWidgets import QApplication
 import numpy as np
 
 def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1., sort_by = 'F'):
@@ -151,7 +152,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
     filenames = [x for x in os.listdir(directory) if x.lower().endswith('.out') and '_atom' not in x.lower()]
 
     if len(filenames) == 0:
-        printprint(f'{datetime.now().strftime("[ %H:%M:%S ]")} There are no .out files in the provided directory.')
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} There are no .out files in the provided directory.')
         return
 
     # Format the header for consistent spacing 
@@ -196,7 +197,8 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                     master_imag_freq_list.append([filename, imag_freqs]) #append list of imag freqs to master imag_freqs alongside the associated filename
                     
                 except Exception as e:
-                    print(f'Error extracting imaginary frequency data from {filename}: {e}')
+                    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error extracting imaginary frequency data from {filename}: {e}')
+                    QApplication.processEvents()
                     pass
 
             #placeholder for relative energy
@@ -204,7 +206,6 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
 
             # Prepare the values to be written
             values = [filename, n_imag, Eelec, ZPE, Ecorr, Hcorr, Gcorr, Total_ZPE, Total_E, Total_H, Total_S * T, Total_G, Erel, q_trans, q_rot, q_vib, q_elec]
-            #print(values)
 
             # Create a format string for consistent spacing
             format_str = '{}'.format(','.join(['{:<25}'] * len(values)) + ',\n')
@@ -223,7 +224,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
 
             with open(output_csv, 'a') as opf:
                 opf.write(format_str.format(*values))
-    #'''
+
     # Calculate the minimum Gibbs energy
     min_Gibbs = np.min(Gibbs_list)
 
@@ -262,8 +263,6 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
             opf.write(format_str.format(*values))
 
     format_missing_thermochem = str('\n'.join(missing_thermochem))
-
-    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Electronic energies and thermochemistry from {len(filenames)} ORCA .out files have been processed in {np.round(time.time() - start,2)} seconds.')
     
     if len(missing_thermochem) > 0:
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {len(missing_thermochem)} files are missing thermochemistry. -12345.0 is being written as a placeholder for the following files:\n{format_missing_thermochem}\n')
@@ -271,9 +270,11 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
     if len(master_imag_freq_list) > 0:
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {len(imag_freqs)} file(s) contain imaginary frequencies:')
         for filename, imag_freq in master_imag_freq_list:
-            #imag_freq_str = ', '.join(map(str, imag_freq)) #imag freqs need to be a string in order to be printed to terminal
             print(f'{filename}: {imag_freq}')
 
+    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Electronic energies and thermochemistry from {len(filenames)} ORCA .out files have been processed in {np.round(time.time() - start,2)} seconds.')
+
+#external testing
 if __name__ == "__main__":
     directory = r'D:\OneDrive\OneDrive - University of Waterloo\Waterloo\MobCal-MPI\MobCal-MPI\Manual\Appendix_A\GUI\Python\Alex_stuff\Thermochemistry'
     sort_by = 'G'

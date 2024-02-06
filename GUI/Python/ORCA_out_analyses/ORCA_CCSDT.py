@@ -1,6 +1,7 @@
 import os, re, time
 from datetime import datetime
 import numpy as np
+from PyQt6.QtWidgets import QApplication
 
 def ORCA_CCSDT(directory):
 
@@ -10,7 +11,7 @@ def ORCA_CCSDT(directory):
     filenames = [x for x in os.listdir(directory) if x.lower().endswith('.out') and '_atom' not in x.lower()]
 
     if len(filenames) == 0:
-        printprint(f'{datetime.now().strftime("[ %H:%M:%S ]")} There are no .out files in the provided directory.')
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} There are no .out files in the provided directory.')
         return
         
     properties = [
@@ -33,15 +34,18 @@ def ORCA_CCSDT(directory):
         i = 1
         if FileExistsError:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} A file with the same name already exists. Writing data to a new file name.')
+            QApplication.processEvents()
 
         if PermissionError:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} A file with the same name is already open. Writing data to a new file name.')
+            QApplication.processEvents()
 
         while os.path.isfile(output_csv):
-            output_csv = os.path.join(directory, f'Thermo_data_{i}.csv')
+            output_csv = os.path.join(directory, f'DLPNO_CCSDT_energies_{i}.csv')
             i += 1
         
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The new output file is {os.path.basename(output_csv)}')
+        QApplication.processEvents()
 
         with open(output_csv, 'w') as opf:
             opf.write(header.format(*properties))
@@ -73,8 +77,8 @@ def ORCA_CCSDT(directory):
 
     format_missing_CCSDT = str('\n'.join(missing_CCSDT))
 
-    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} DLPNO-CCSD(T) energies were extracted from {len(filenames)} ORCA .out files in {np.round(time.time() - start,2)} seconds.')
-
     if len(missing_CCSDT) > 0:
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {len(missing_CCSDT)} file(s) did not contain CCSDT energies:\n{format_missing_CCSDT}')
+
+    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} DLPNO-CCSD(T) energies were extracted from {len(filenames)} ORCA .out files in {np.round(time.time() - start,2)} seconds.')
 
