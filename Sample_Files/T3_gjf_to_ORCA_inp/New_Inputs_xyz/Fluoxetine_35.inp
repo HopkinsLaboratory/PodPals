@@ -1,0 +1,22 @@
+! wB97X-D3 TightOpt Freq def2-TZVPP def2/J RIJCOSX TightSCF defgrid3 CHELPG
+%maxcore 3400
+
+%pal nprocs 8 
+end
+
+%chelpg
+grid 0.1
+rmax 3.0
+end
+
+%geom
+Calc_Hess true
+end
+
+%elprop
+Dipole true
+Quadrupole true
+Polar 1
+end
+
+*xyzfile 1 1 Fluoxetine_35.xyz

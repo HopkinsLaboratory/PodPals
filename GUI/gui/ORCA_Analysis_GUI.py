@@ -3,13 +3,14 @@ from PyQt6.QtCore import QCoreApplication, Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QScreen
 
 import platform, os, time, shutil, stat, sys, subprocess, traceback
+import csv
 from datetime import datetime
 from io import StringIO
 
 #Import the functions for the I/O tab
 from Python.Input_Output_operations.xyz_file_splitter import xyz_file_splitter
-from Python.Input_Output_operations.Gaussian_gjf_to_ORCA_input import Gaussian_gjf_to_ORCA_input
 from Python.Input_Output_operations.cosine_sim import cosine_sim
+from Python.Input_Output_operations.Gaussian_gjf_to_ORCA_input import Gaussian_gjf_to_ORCA_input
 from Python.Input_Output_operations.ORCA_out_to_ORCA_inp import ORCA_out_to_ORCA_inp
 from Python.Input_Output_operations.ORCA_out_to_ORCA_TDDFT_VG import ORCA_out_to_ORCA_TDDFT_VG
 
@@ -86,13 +87,13 @@ class ORCAAnalysisSuite(QMainWindow):
         #Sub-tabs for I/O operations, then add to main IO tab
 
         self.xyz_file_splitter_tab = XYZFileSplitterTab(self.output_text_edit)
-        IO_tab.addTab(self.xyz_file_splitter_tab, 'XYZ File Splitter')
+        IO_tab.addTab(self.xyz_file_splitter_tab, 'CREST .xyz Splitter')
 
-        sub_tab2 = GJFtoORCAInputTab(self.output_text_edit)
-        IO_tab.addTab(sub_tab2, 'GJF to ORCA Input')
-
-        sub_tab3 = CosineSimTab(self.output_text_edit)
-        IO_tab.addTab(sub_tab3, 'Cosine Sim')
+        sub_tab2 = CosineSimTab(self.output_text_edit)
+        IO_tab.addTab(sub_tab2, 'Cosine Sim of .gjf files')
+        
+        sub_tab3 = GJFtoORCAInputTab(self.output_text_edit)
+        IO_tab.addTab(sub_tab3, 'GJF to ORCA Input')
 
         sub_tab4 = ORCAOut_ORCAInputTab(self.output_text_edit)
         IO_tab.addTab(sub_tab4, 'ORCA out to ORCA inp')
@@ -170,14 +171,17 @@ class ORCAAnalysisSuite(QMainWindow):
 
                 # Check if the command was successful
                 if result.returncode != 0:
-                    raise Exception(f'Error: {result.stderr}')
+                    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error when obtaining the latest SHA value from the ORCA Analysis GUI GitHub repo (likely due to lack of an internet connection): {result.stderr}')
+                    return
 
                 # Parse the output to get the SHA
                 output = result.stdout.split()
                 return output[0] if output else None
             
             except Exception as e:
-                raise Exception(f'An error occurred: {e}')
+                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An unknown error occurred when obtaining the latest SHA value from the ORCA Analysis GUI GitHub repo: {e}')
+                print(f'Please report this error to the Issues section of the GitHub repo.')
+                return
 
         def delete_dir(directory):
             '''Windows has special permissions on read-only folders - here's a function that deals with it using shutil.rmtree'''
@@ -206,15 +210,15 @@ class ORCAAnalysisSuite(QMainWindow):
                     shutil.rmtree(directory, onerror=handleRemoveReadonly) 
 
                 except:
-                    print(f'Encountered error when attempting to delete {directory}. This is probably because your python version is <3.9. Please update to Python 3.12+ to rectify this - you can also manually delete the temp folder after the GUI loads. ')
+                    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Encountered error when attempting to delete {directory}. This is probably because your python version is <3.9. Please update to Python 3.12+ to rectify this - you can also manually delete the temp folder after the GUI loads. ')
                     pass
 
             except PermissionError:
-                print(f'Encountered permission error when attempting to delete {directory}. This is probably caused by a OneDrive sync issue - you can manually delete the GUI/temp folder after the GUI loads. ')
+                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Encountered permission error when attempting to delete {directory}. This is probably caused by a OneDrive sync issue - you can manually delete the GUI/temp folder after the GUI loads. ')
                 pass
 
             except Exception as e: 
-                print(f'An unexpected error encountered trying to remove {directory}: {e}.\n Please report this error and your workflow / system specs to the Issues section on Github. You can delete still delete the /temp manually.')         
+                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An unexpected error encountered trying to remove {directory}: {e}.\n Please report this error and your workflow / system specs to the Issues section on Github. You can delete still delete GUI/temp manually.')         
                 # Get the current working directory and define the temporary directory path
                 pass
 
@@ -236,7 +240,7 @@ class ORCAAnalysisSuite(QMainWindow):
 
                 # Check if the file is in the correct format
                 if '\n' in file_content or '\r' in file_content or ' ' in file_content:
-                    print(f'{ID_file} is not in the correct format. Please re-download this file from the ORCA Analysis GUI GitHub repo and re-run the GUI launcher.')
+                    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {ID_file} is not in the correct format. Please re-download this file from the ORCA Analysis GUI GitHub repo and re-run the GUI launcher.')
                     return
 
                 local_SHA = file_content.strip()
@@ -249,7 +253,12 @@ class ORCAAnalysisSuite(QMainWindow):
         if repo_SHA == local_SHA: 
             temp_dir = os.path.join(root, 'temp')
             if os.path.isdir(temp_dir):
-                delete_dir(temp_dir)
+                try:
+                    delete_dir(temp_dir)
+                except Exception as e:
+                    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} There was a problem deleting the /temp folder that was made from the previous update procedure: {e}.')
+                    print('Please delete this manually. You can continue to use the GUI whether the /temp folder is deleted or not.')
+                    pass
 
         else:
             choice_title = 'Update available!'
@@ -257,24 +266,17 @@ class ORCAAnalysisSuite(QMainWindow):
             choice = QMessageBox.question(self, choice_title, choice_prompt, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
 
             if choice == QMessageBox.StandardButton.Yes:
-                print('The ORCA Analysis GUI is being updated. Any errors encountered during the update process will be printed below.')
+                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The ORCA Analysis GUI is being updated. Any errors encountered during the update process will be printed below.')
                 
                 #Run the update function
                 Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir)
 
-                print('The ORCA Analysis GUI files have been succesfully updated to their current version. Please close and reload the GUI')
+                print(f' {datetime.now().strftime("[ %H:%M:%S ]")} The ORCA Analysis GUI files have been succesfully updated to their current version. Please close and reload the GUI.')
                 return
 
             else:
-                print('The user has opted to use their local version of ORCA Analysis GUI.')
-
-    def on_update_complete(self, success, message):
-        if success:
-            # Handle successful update, possibly prompt user to restart application
-            QMessageBox.information(self, "Update Complete", message)
-        else:
-            # Handle update failure, show error message
-            QMessageBox.critical(self, "Update Failed", message)
+                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The user has opted to use their local version of ORCA Analysis GUI.')
+                return
 
 class XYZFileSplitterTab(QWidget):
     def __init__(self, text_redirector, parent=None):
@@ -291,6 +293,7 @@ class XYZFileSplitterTab(QWidget):
 
         file_label = QLabel('.xyz file:')
         self.file_path_input = QLineEdit()
+        self.file_path_input.setPlaceholderText('Directory + filename of the crest_conformers.xyz output from CREST.')
         file_button = QPushButton('Browse')
         
         file_layout.addWidget(file_label)
@@ -338,10 +341,176 @@ class XYZFileSplitterTab(QWidget):
         file_path = self.file_path_input.text()
         basename = self.basename_input.text()
 
-        try:
-            xyz_file_splitter(file_path, basename)
-        except Exception as e:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: {e}\nTraceback: {traceback.format_exc()}')
+        #Run the code - extensive error handling is provided in the xyz_file_spliiter function itself
+        xyz_file_splitter(file_path, basename)
+
+class CosineSimTab(QWidget):
+    def __init__(self, text_redirector, parent=None):
+        super().__init__(parent)
+        self.text_redirector = text_redirector
+        self.initUI()
+
+    def initUI(self):
+        layout = QVBoxLayout(self)
+
+        directory_label = QLabel('Directory or .csv:')
+        layout.addWidget(directory_label)
+
+        #Directory input
+        directory_layout = QHBoxLayout()
+
+        self.directory_input = QLineEdit()
+
+        browse_dir_button = QPushButton('Browse dir')
+        browse_dir_button.clicked.connect(self.browse_directory)
+
+        browse_csv_button = QPushButton('Browse .csv')
+        browse_csv_button.clicked.connect(self.browse_csv)
+        
+        directory_layout.addWidget(directory_label)
+        directory_layout.addWidget(self.directory_input)
+        directory_layout.addWidget(browse_dir_button)
+        directory_layout.addSpacing(5)
+        directory_layout.addWidget(browse_csv_button)
+
+        layout.addLayout(directory_layout)  
+        layout.addSpacing(5)
+
+        #Similiarity input
+        sim_layout = QHBoxLayout()
+
+        #add the input for defining the similiarity threshold
+        self.sim_label = QLabel('Similiarity threshold (%):')
+        self.sim_input = QDoubleSpinBox()
+        self.sim_input.setValue(97.0)
+        self.sim_input.setMaximum(100.0)  
+        self.sim_input.setMinimumWidth(70)
+        
+        sim_layout.addWidget(self.sim_label)
+        sim_layout.addWidget(self.sim_input)
+        sim_layout.addStretch(1)
+
+        layout.addLayout(sim_layout)
+        layout.addSpacing(5)
+
+        #add a checkbox for writing all pairwise similarities to a file
+        self.write_sim_checkbox = QCheckBox('Write pairwise similiarities to a .csv file?')
+        layout.addWidget(self.write_sim_checkbox)
+
+        layout.addSpacing(10)
+
+        #Run Button
+        run_button = QPushButton('Run Cosine Similarity')
+        run_button.clicked.connect(self.run_cosine_similarity)
+        
+        layout.addWidget(run_button)
+        layout.addStretch(1)
+
+        layout.setContentsMargins(30, 30, 30, 30) 
+        self.setLayout(layout)
+
+    def browse_directory(self):
+        directory_path = QFileDialog.getExistingDirectory(self, 'Select Directory')
+
+        if directory_path:
+            self.directory_input.setText(directory_path)
+
+    def browse_csv(self):
+
+        file_path, _ = QFileDialog.getOpenFileName(self, 'Select .csv file', '', 'CSV Files (*.csv)')
+
+        #Check if a file path was selected
+        if file_path:
+            self.directory_input.setText(directory_path)
+
+    def run_cosine_similarity(self):
+        #Get the selected directory or CSV file, as well as the similarity threshold
+        input_path = self.directory_input.text()
+        similarity_threshold = self.sim_input.value()
+
+        #checkbox logic
+        if self.write_sim_checkbox.isChecked(): self.write_sim = True
+        else: self.write_sim = False
+
+        #Input validation
+        if not os.path.isdir(input_path) and not os.path.isfile(input_path):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {input_path} is not a valid directory or file. Please check that  you have specified is file/location that exists, then try again.')
+            return
+        
+        #Check that the .csv is the correct format
+        if os.path.isfile(input_path) and input_path.lower().endswith('csv'):
+            expected_headers = ['Filename', 'Energies', 'Relative Energy (kJ/mol)']
+            
+            try:
+                with open(input_path, mode='r', newline='') as csvfile:
+                    reader = csv.reader(csvfile)
+                    headers = next(reader)
+                    print(headers)
+                    
+                    #Check headers
+                    if headers != expected_headers:
+                        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The headers int he .csv do not match the expected format. Please extract the crest_conformers.xyz file using the CREST .xyz splitter function in this GUI, then provide the Energies.csv generated as an input here.')
+                        return
+
+                    # Initialize a variable to track the previous energy value and the number of rows in the .csv
+                    row_count = 0
+                    previous_energy = None
+
+                    #Check each row
+                    for row in reader:
+                        row_count += 1
+
+                        if len(row) != 3:
+                            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} CSV headers do not match the expected format. Please extract the crest_conformers.xyz file using the CREST .xyz splitter function in this GUI, then provide the Energies.csv generated as an input here.')
+                            return
+
+                        filename, energies, relative_energy = row
+                        
+                        #Check filename format
+                        if not filename.endswith('.gjf'):
+                            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} All filenames in the .csv must end with .gjf. Please extract the crest_conformers.xyz file using the CREST .xyz splitter function in this GUI, then provide the Energies.csv generated as an input here.')
+                            return
+
+                        #Check that all energies and relative energies are floatable
+                        try:
+                            float(energies)
+                            float(relative_energy)
+                        except ValueError:
+                            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Energies and/or relative energies in the .csv must all be integers. Please extract the crest_conformers.xyz file using the CREST .xyz splitter function in this GUI, then provide the Energies.csv generated as an input here.')
+                            return
+
+                        #Finally, check that the energies are sorted in the order of smallest to largest. If they're not, inform the user.
+
+                        if previous_energy is not None and energies < previous_energy:
+                            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The energies are not sorted from smallest to largest; please do this in the .csv before continuing. If you do not want to sort by energy, provide a directory containing the .gjf files as the input instead.')
+                            return
+
+                        #Previous energy variable with current energy in the .csv                           
+                        previous_energy = energies
+                    
+                    #Throw an error if the .csv only references 1 file as there is nothing to compare is against
+                    if row_count < 2:
+                        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The .csv only references one file; there is nothing to compare it against!')
+                        return
+
+            except IOError as e:
+                print(f'An error was encountered when trying to open the .csv file: {e}')
+                return
+
+        #If a directory is provided, ensure that the directory contains at least two .gjf files
+        if os.path.isdir(input_path):
+            gjf_files = [x for x in os.listdir(directory) if x.lower().endswith('.gjf')]
+
+            if len(gjf_files) == 0:
+                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The specified directory does not contain any gjf files!')
+                return
+
+            elif len(gjf_files) == 1:
+                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The specified directory only contains one gjf file; there is nothing to compare it against!')
+                return
+        
+        #If all checks pass, run the code
+        cosine_sim(input_path, similarity_threshold, self.write_sim)
 
 class GJFtoORCAInputTab(QWidget):
     def __init__(self, text_redirector, parent=None):
@@ -383,12 +552,15 @@ class GJFtoORCAInputTab(QWidget):
 
         charge_label = QLabel('Charge:')
         self.charge_input = QSpinBox()
+        self.charge_input.setMinimum(-100)
+        self.charge_input.setMaximum(100)
         self.charge_input.setValue(1)
         self.charge_input.setMinimumWidth(60)
 
         multiplicity_label = QLabel('Multiplicity:')
         self.multiplicity_input = QSpinBox()
         self.multiplicity_input.setValue(1)
+        self.multiplicity_input.setMaximum(100)
         self.multiplicity_input.setMinimumWidth(60)
 
         performance_layout.addWidget(mpp_label)
@@ -424,7 +596,6 @@ class GJFtoORCAInputTab(QWidget):
         calc_layout.addWidget(self.calc_type_combobox)
         calc_layout.addSpacing(10)
 
-        #calc_line_label = QLabel('Calculation Line (start with !):')
         self.calc_line_input = QLineEdit()
         self.calc_line_input.setText('! wB97X-D3 TightOpt Freq def2-TZVPP def2/J RIJCOSX TightSCF defgrid3') #default DFT method 
         calc_layout.addWidget(self.calc_line_input)
@@ -478,7 +649,7 @@ class GJFtoORCAInputTab(QWidget):
 
         layout.setContentsMargins(30, 30, 30, 30)
         self.setLayout(layout)
-
+    
     def update_calc_line(self, index):
         if index == 0:  #DFT
             self.calc_line_input.setText("! wB97X-D3 TightOpt Freq def2-TZVPP def2/J RIJCOSX TightSCF defgrid3 CHELPG")
@@ -503,144 +674,65 @@ class GJFtoORCAInputTab(QWidget):
                 self.calc_line_input.setText(updated_text)
     
     def browse_directory(self):
-        directory_path = QFileDialog.getExistingDirectory(self, "Select Directory")
+        directory_path = QFileDialog.getExistingDirectory(self, 'Select Directory')
 
         if directory_path:
             self.directory_input.setText(directory_path)
 
     def run_gjf_to_orca_input(self):
-        try:
-            #Gather input values from the GUI
-            directory = self.directory_input.text()
-            mpp = self.mpp_input.value()
-            ncores = self.ncores_input.value()
-            charge = self.charge_input.value()
-            multiplicity = self.multiplicity_input.value()
-            calc_line = self.calc_line_input.text()
+        #Gather input values from the GUI
+        directory = self.directory_input.text()
+        mpp = self.mpp_input.value()
+        ncores = self.ncores_input.value()
+        charge = self.charge_input.value()
+        multiplicity = self.multiplicity_input.value()
+        calc_line = self.calc_line_input.text()
 
-            #Ensure calc_line starts with "!"
-            if not calc_line.startswith("!"):
-                calc_line = "! " + calc_line
-
-            #Check the state of ESP_Charges checkbox
-            esp_charges_checked = self.esp_charges_checkbox.isChecked()
-            
-            #If ESP_Charges is checked, gather values from additional fields
-            if esp_charges_checked:
-                grid = self.grid_input.value()
-                rmax = self.rmax_input.value()
-            else:
-                grid = 0.1
-                rmax = 3.0
-
-            #checkbox logic
-            if self.calc_hess_checkbox.isChecked(): self.calc_hess_checked = True
-            else: self.calc_hess_checked = False
-
-            if self.polarization_checkbox.isChecked(): self.polarization_checked = True
-            else: self.polarization_checked = False
-
-            if self.write_xyz_checkbox.isChecked(): self.write_xyz_checked = True
-            else: self.write_xyz_checked = False
-
-            try:
-                #Call the Gaussian_gjf_to_ORCA_input function
-                Gaussian_gjf_to_ORCA_input(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, self.calc_hess_checked, self.polarization_checked, self.write_xyz_checked)
-            except Exception as e:
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: {e}\nTraceback: {traceback.format_exc()}')
-
-        except Exception as e:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: {e}\nTraceback: {traceback.format_exc()}')
-
-class CosineSimTab(QWidget):
-    def __init__(self, text_redirector, parent=None):
-        super().__init__(parent)
-        self.text_redirector = text_redirector
-        self.initUI()
-
-    def initUI(self):
-        layout = QVBoxLayout(self)
-
-        #Directory input
-        directory_layout = QHBoxLayout()
-
-        directory_label = QLabel('Directory or CSV File:')
-        self.directory_input = QLineEdit()
-
-        browse_button = QPushButton('Browse')
-        browse_button.clicked.connect(self.browse_directory_or_csv)
+        #Check the state of ESP_Charges checkbox
+        esp_charges_checked = self.esp_charges_checkbox.isChecked()
         
-        directory_layout.addWidget(directory_label)
-        directory_layout.addWidget(self.directory_input)
-        directory_layout.addWidget(browse_button)
-
-        layout.addLayout(directory_layout)  
-        layout.addSpacing(5)
-
-        #Similiarity input
-        sim_layout = QHBoxLayout()
-
-        #add the input for defining the similiarity threshold
-        self.sim_label = QLabel('Similiarity threshold (%):')
-        self.sim_input = QDoubleSpinBox()
-        self.sim_input.setValue(97.0)
-        self.sim_input.setMaximum(100.0)  
-        self.sim_input.setMinimumWidth(70)
-        
-        sim_layout.addWidget(self.sim_label)
-        sim_layout.addWidget(self.sim_input)
-        sim_layout.addStretch(1)
-
-        layout.addLayout(sim_layout)
-        layout.addSpacing(5)
-
-        #add a checkbox for writing all pairwise similarities to a file
-        self.write_sim_checkbox = QCheckBox('Write pairwise similiarities to a .csv file?')
-        layout.addWidget(self.write_sim_checkbox)
-
-        layout.addSpacing(10)
-
-        #Run Button
-        run_button = QPushButton('Run Cosine Similarity')
-        run_button.clicked.connect(self.run_cosine_similarity)
-        
-        layout.addWidget(run_button)
-        layout.addStretch(1)
-
-        layout.setContentsMargins(30, 30, 30, 30) 
-        self.setLayout(layout)
-
-
-    def browse_directory_or_csv(self):
-        file_dialog = QFileDialog()
-        file_dialog.setNameFilter('CSV Files (*.csv)')
-        file_dialog.setDefaultSuffix('csv')
-        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
-
-        file_path, _ = file_dialog.getOpenFileName()  #Use getOpenFileName to get the file path
-        
-        if file_path:
-            self.directory_input.setText(file_path)
-
-    def run_cosine_similarity(self):
-        #Get the selected directory or CSV file, as well as the similarity threshold
-        input_path = self.directory_input.text()
-        similarity_threshold = self.sim_input.value()
+        #If ESP_Charges is checked, gather values from additional fields
+        if esp_charges_checked:
+            grid = self.grid_input.value()
+            rmax = self.rmax_input.value()
+        else:
+            grid = 0.1
+            rmax = 3.0
 
         #checkbox logic
-        if self.write_sim_checkbox.isChecked(): self.write_sim = True
-        else: self.write_sim = False
+        if self.calc_hess_checkbox.isChecked(): self.calc_hess_checked = True
+        else: self.calc_hess_checked = False
 
-        try:
-            if not os.path.isdir(input_path) and not os.path.isfile(input_path):
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {input_path} is not a valid directory or file. Please check that  you have specified is file/location that exists, then try again.')
-            
-            else:
-                #if proper files are given, run the code
-                cosine_sim(input_path, similarity_threshold, self.write_sim)
+        if self.polarization_checkbox.isChecked(): self.polarization_checked = True
+        else: self.polarization_checked = False
 
-        except Exception as e:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: {e}\nTraceback: {traceback.format_exc()}')
+        if self.write_xyz_checkbox.isChecked(): self.write_xyz_checked = True
+        else: self.write_xyz_checked = False
+
+        #Input validation
+        if not directory:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The entry for the directory cannot be empty.')
+            return
+
+        if not os.path.isdir(directory):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The directory specified does not exist. Please provide a valid directory.')
+            return
+
+        #Check that the directory contains .gjf files
+        if not any(filename.lower().endswith('.gjf') for filename in os.listdir(directory)):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No .gjf files were found in {os.path.basename(directory)} - ORCA .inp files cannot be made from .gjf files if none are present!')
+            return
+
+        if not calc_line:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The entry for the method cannot be empty.')
+            return
+
+        if len(calc_line.split()) <= 3:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} WARNING: Your method seems rather short. Your input files will be created, but please double-check that have have requested an appropriate method using proper syntax, and that you did not forget any keywords.')
+            pass
+
+        #Call the Gaussian_gjf_to_ORCA_input function - extensive error handling is provided in the xyz_file_spliiter function itself
+        Gaussian_gjf_to_ORCA_input(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, self.calc_hess_checked, self.polarization_checked, self.write_xyz_checked)
 
 class ORCAOut_ORCAInputTab(QWidget):
     def __init__(self, text_redirector, parent=None):
@@ -680,12 +772,15 @@ class ORCAOut_ORCAInputTab(QWidget):
 
         charge_label = QLabel('Charge:')
         self.charge_input = QSpinBox()
+        self.charge_input.setMinimum(-100)
+        self.charge_input.setMaximum(100)
         self.charge_input.setValue(1)
         self.charge_input.setMinimumWidth(60)
 
         multiplicity_label = QLabel('Multiplicity:')
         self.multiplicity_input = QSpinBox()
         self.multiplicity_input.setValue(1)
+        self.multiplicity_input.setMaximum(100)
         self.multiplicity_input.setMinimumWidth(60)
 
         performance_layout.addWidget(mpp_label)
@@ -721,11 +816,9 @@ class ORCAOut_ORCAInputTab(QWidget):
         calc_layout.addWidget(self.calc_type_combobox)
         calc_layout.addSpacing(10)
 
-        #calc_line_label = QLabel('Calculation Line (start with !):')
         self.calc_line_input = QLineEdit()
-        self.calc_line_input.setText('! wB97X-D3 TightOpt Freq def2-TZVPP def2/J RIJCOSX TightSCF defgrid3 CHELPG') #default DFT method 
+        self.calc_line_input.setText('! wB97X-D3 TightOpt Freq def2-TZVPP def2/J RIJCOSX TightSCF defgrid3') #default DFT method 
         calc_layout.addWidget(self.calc_line_input)
-        #calc_layout.addStretch(1)
 
         layout.addLayout(calc_layout)
         layout.addSpacing(5)
@@ -757,9 +850,9 @@ class ORCAOut_ORCAInputTab(QWidget):
         
         layout.addLayout(grid_layout)
 
-        #Checkboxes for Hessian, Polarization, XYZ Coordinates
+        #Checkboxes for Hessian, Polarization, XYZ Coordinates, and creating additional .gjf files for visualization
         self.calc_hess_checkbox = QCheckBox('Calculate Hessian on first optimization step?')
-        self.polarization_checkbox = QCheckBox('Calculate dipole/quadrupole Moments?')
+        self.polarization_checkbox = QCheckBox('Calculate dipole/quadrupole moments?')
         self.write_xyz_checkbox = QCheckBox('Call XYZ coordinates from external .xyz file?')
         self.write_gjf_checkbox = QCheckBox('Write final coordinates to a .gjf file for visualization in GaussView?')
 
@@ -804,58 +897,70 @@ class ORCAOut_ORCAInputTab(QWidget):
                 self.calc_line_input.setText(updated_text)
     
     def browse_directory(self):
-        directory_path = QFileDialog.getExistingDirectory(self, "Select Directory")
+        directory_path = QFileDialog.getExistingDirectory(self, 'Select Directory')
 
         if directory_path:
             self.directory_input.setText(directory_path)
 
     def run_ORCA_out_to_ORCA_inp(self):
-        try:
-            #Gather input values from the GUI
-            directory = self.directory_input.text()
-            mpp = self.mpp_input.value()
-            ncores = self.ncores_input.value()
-            charge = self.charge_input.value()
-            multiplicity = self.multiplicity_input.value()
-            calc_line = self.calc_line_input.text()
 
-            #Ensure calc_line starts with "!"
-            if not calc_line.startswith("!"):
-                calc_line = "! " + calc_line
+        #Gather input values from the GUI
+        directory = self.directory_input.text()
+        mpp = self.mpp_input.value()
+        ncores = self.ncores_input.value()
+        charge = self.charge_input.value()
+        multiplicity = self.multiplicity_input.value()
+        calc_line = self.calc_line_input.text()
 
-            #Check the state of ESP_Charges checkbox
-            esp_charges_checked = self.esp_charges_checkbox.isChecked()
-            
-            #If ESP_Charges is checked, gather values from additional fields
-            if esp_charges_checked:
-                grid = self.grid_input.value()
-                rmax = self.rmax_input.value()
-            else:
-                #default values for the ESP grid
-                grid = 0.1
-                rmax = 3.0
+        #Check the state of ESP_Charges checkbox
+        esp_charges_checked = self.esp_charges_checkbox.isChecked()
+        
+        #If ESP_Charges is checked, gather values from additional fields
+        if esp_charges_checked:
+            grid = self.grid_input.value()
+            rmax = self.rmax_input.value()
+        else:
+            #default values for the ESP grid
+            grid = 0.1
+            rmax = 3.0
 
-            #checkbox logic
-            if self.calc_hess_checkbox.isChecked(): self.calc_hess_checked = True
-            else: self.calc_hess_checked = False
+        #checkbox logic
+        if self.calc_hess_checkbox.isChecked(): self.calc_hess_checked = True
+        else: self.calc_hess_checked = False
 
-            if self.polarization_checkbox.isChecked(): self.polarization_checked = True
-            else: self.polarization_checked = False
+        if self.polarization_checkbox.isChecked(): self.polarization_checked = True
+        else: self.polarization_checked = False
 
-            if self.write_xyz_checkbox.isChecked(): self.write_xyz_checked = True
-            else: self.write_xyz_checked = False
+        if self.write_xyz_checkbox.isChecked(): self.write_xyz_checked = True
+        else: self.write_xyz_checked = False
 
-            if self.write_gjf_checkbox.isChecked(): self.write_gjf_checked = True
-            else: self.write_gjf_checked = False
+        if self.write_gjf_checkbox.isChecked(): self.write_gjf_checked = True
+        else: self.write_gjf_checked = False
 
-            try:
-                #Call the Gaussian_gjf_to_ORCA_input function
-                ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, self.calc_hess_checked, self.polarization_checked, self.write_xyz_checked, self.write_gjf_checked)
-            except Exception as e:
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: {e}\nTraceback: {traceback.format_exc()}')
+        #Input validation
+        if not directory:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The entry for the directory cannot be empty.')
+            return
 
-        except Exception as e:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: {e}\nTraceback: {traceback.format_exc()}')
+        if not os.path.isdir(directory):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The directory specified does not exist. Please provide a valid directory.')
+            return
+
+        #Check that the directory contains .out files
+        if not any(filename.lower().endswith('.out') for filename in os.listdir(directory)):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No .out files were found in {os.path.basename(directory)} - ORCA .inp files cannot be made from .out files if none are present!')
+            return
+
+        if not calc_line:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The entry for the method cannot be empty.')
+            return
+
+        if len(calc_line.split()) <= 3:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} WARNING: Your method seems rather short. Your input files will be created, but please double-check that have have requested an appropriate method using proper syntax, and that you did not forget any keywords.')
+            pass
+
+        #Call the Gaussian_gjf_to_ORCA_input function if prelim checks pass - code contains extensive error handling
+        ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, self.calc_hess_checked, self.polarization_checked, self.write_xyz_checked, self.write_gjf_checked)
 
 class ORCAOut_ORCA_TDDFT_Tab(QWidget):
     def __init__(self, text_redirector, parent=None):
@@ -885,8 +990,8 @@ class ORCAOut_ORCA_TDDFT_Tab(QWidget):
         performance_layout = QHBoxLayout()
         mpp_label = QLabel('Mem per core (MB):')
         self.mpp_input = QSpinBox()
-        self.mpp_input.setMaximum(20000)
-        self.mpp_input.setValue(3400)
+        self.mpp_input.setMaximum(50000)
+        self.mpp_input.setValue(5000)
         self.mpp_input.setMinimumWidth(60)
 
         ncores_label = QLabel('#cores:')
@@ -897,12 +1002,15 @@ class ORCAOut_ORCA_TDDFT_Tab(QWidget):
 
         charge_label = QLabel('Charge:')
         self.charge_input = QSpinBox()
+        self.charge_input.setMinimum(-100)
+        self.charge_input.setMaximum(100)
         self.charge_input.setValue(1)
         self.charge_input.setMinimumWidth(60)
 
         multiplicity_label = QLabel('Multiplicity:')
         self.multiplicity_input = QSpinBox()
         self.multiplicity_input.setValue(1)
+        self.multiplicity_input.setMaximum(100)
         self.multiplicity_input.setMinimumWidth(60)
 
         performance_layout.addWidget(mpp_label)
@@ -937,7 +1045,7 @@ class ORCAOut_ORCA_TDDFT_Tab(QWidget):
 
         #number of states
         states_layout = QHBoxLayout()
-        n_states_label = QLabel('#states:')
+        n_states_label = QLabel('# states:')
         self.nstates_input = QSpinBox()
         self.nstates_input.setValue(10)
         self.nstates_input.setMinimumWidth(50)
@@ -970,34 +1078,50 @@ class ORCAOut_ORCA_TDDFT_Tab(QWidget):
         layout.addStretch(1)
    
     def browse_directory(self):
-        directory_path = QFileDialog.getExistingDirectory(self, "Select Directory")
+        directory_path = QFileDialog.getExistingDirectory(self, 'Select Directory')
 
         if directory_path:
             self.directory_input.setText(directory_path)
 
     def run_ORCA_out_to_ORCA_TDDFT_VG(self):
-        try:
-            #Gather input values from the GUI
-            directory = self.directory_input.text()
-            mpp = self.mpp_input.value()
-            ncores = self.ncores_input.value()
-            charge = self.charge_input.value()
-            multiplicity = self.multiplicity_input.value()
-            calc_line = self.calc_line_input.text()
-            states = self.nstates_input.value()
 
-            #checkbox logic for .gjf writing
-            if self.write_gjf_checkbox.isChecked(): self.write_gjf_checked = True
-            else: self.write_gjf_checked = False
+        #Gather input values from the GUI
+        directory = self.directory_input.text()
+        mpp = self.mpp_input.value()
+        ncores = self.ncores_input.value()
+        charge = self.charge_input.value()
+        multiplicity = self.multiplicity_input.value()
+        calc_line = self.calc_line_input.text()
+        states = self.nstates_input.value()
 
-            try:
-                #Call the ORCA .out to ORCA .inp for Vertical Gradient (VG) TD-DFT calcs
-                ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, calc_line, states, self.write_gjf_checked)
-            except Exception as e:
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: {e}\nTraceback: {traceback.format_exc()}')
+        #checkbox logic for .gjf writing
+        if self.write_gjf_checkbox.isChecked(): self.write_gjf_checked = True
+        else: self.write_gjf_checked = False
 
-        except Exception as e:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: {e}\nTraceback: {traceback.format_exc()}')
+        #Input validation
+        if not directory:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The entry for the directory cannot be empty.')
+            return
+
+        if not os.path.isdir(directory):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The directory specified does not exist. Please provide a valid directory.')
+            return
+
+        #Check that the directory contains .out files
+        if not any(filename.lower().endswith('.out') for filename in os.listdir(directory)):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No .out files were found in {os.path.basename(directory)} - ORCA .inp files cannot be made from .out files if none are present!')
+            return
+
+        if not calc_line:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The entry for the method cannot be empty.')
+            return
+
+        if len(calc_line.split()) <= 3:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} WARNING: Your method seems rather short. Your input files will be created, but please double-check that have have requested an appropriate method using proper syntax, and that you did not forget any keywords.')
+            pass
+
+        #Call the ORCA .out to ORCA .inp for Vertical Gradient (VG) TD-DFT calcs if all cehcks pass - ORCA_out_to_ORCA_TDDFT_VG contains extensive error handling
+        ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, calc_line, states, self.write_gjf_checked)
 
 class ORCA_Optim_plot_Tab(QWidget):
     def __init__(self, text_redirector, parent=None):
@@ -1130,7 +1254,7 @@ class DFTThermochemTab(QWidget):
         self.sort_by_combo = QComboBox()
         self.sort_by_combo.addItems(['Filename', 'Gibbs (G)', 'Enthalpy (H)', 'Entropy (S)', 'Thermal Energy (E)', 'Zero-point energy (ZPE)'])
         sort_by_layout.addWidget(self.sort_by_combo)
-        sort_by_layout.addStretch()  #Needed to align text with box on the left
+        sort_by_layout.addStretch(1)  
         layout.addLayout(sort_by_layout)
         layout.addSpacing(10)
 
@@ -1434,7 +1558,9 @@ class Extract_TDDFT_VG_SpectraTab(QWidget):
         directory_layout.addWidget(directory_label)
         
         self.directory_input = QLineEdit()
+        self.directory_input.setPlaceholderText('Directory containing your .spectrum and/or .spectrum.rootN files.')
         directory_layout.addWidget(self.directory_input)
+        
 
         browse_button = QPushButton('Browse')
         browse_button.clicked.connect(self.browse_directory)
@@ -1522,7 +1648,7 @@ class Extract_TDDFT_VG_SpectraTab(QWidget):
         shift_label = QLabel('Shift spectra by:')
         self.shift_input = QDoubleSpinBox()
         self.shift_input.setRange(-200000,200000)
-        self.shift_input.setValue(-0.45)
+        self.shift_input.setValue(-0.25)
         self.shift_input.setMinimumWidth(50)  
 
         #Shift Unit ComboBox
@@ -1544,7 +1670,7 @@ class Extract_TDDFT_VG_SpectraTab(QWidget):
         basename_layout = QHBoxLayout()
         output_file_label = QLabel('Basename:')
         self.output_file_input = QLineEdit()
-        self.output_file_input.setPlaceholderText('Enter the basename of your .spectrum and .spectrum.rootN files.')
+        self.output_file_input.setPlaceholderText('Enter the basename of your .spectrum and/or .spectrum.rootN files.')
         
         basename_layout.addWidget(output_file_label)
         basename_layout.addWidget(self.output_file_input)

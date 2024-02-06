@@ -1,8 +1,9 @@
-#import os, time, csv, shutil
+import os, time, csv, shutil
 import numpy as np
 from natsort import natsorted
 from datetime import datetime
 from Python.atom_mass import atom_masses
+from PyQt6.QtWidgets import QApplication
 
 def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
     
@@ -16,7 +17,7 @@ def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
     '''
 
     def read_gjf(file_path):
-        """Read the xyz data of a .gjf file and write the data to a list."""
+        '''Read the xyz data of a .gjf file and write the data to a list.'''
         
         #empty list to write coordinate data to
         coordinates = []
@@ -24,10 +25,10 @@ def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
         with open(file_path, 'r') as file:
             content = file.readlines()
 
-        # Find the index of the line containing two integers separated by a space
+        #Find the index of the line containing two integers separated by a space
         cutoff_index = next((i for i, line in enumerate(content) if len(line.split()) == 2), None)
 
-        # If cutoff line is found, return content starting from the next line
+        #If cutoff line is found, return content starting from the next line
         if cutoff_index is not None:
             xyz_data = content[cutoff_index + 1:]
         
@@ -40,7 +41,7 @@ def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
             return coordinates
         
         else:
-            # Handle the case where no cutoff line is found
+            #Handle the case where no cutoff line is found
             raise ValueError(f'The charge and multiplicity was not found in {os.path.basename(file_path)}. Please check that this file is in the .gjf format.')
 
     def calc_center_of_mass(coordinates):
@@ -68,7 +69,7 @@ def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
             distance = np.sqrt(np.square(float(x) - center_of_mass[0]) + np.square(float(y) - center_of_mass[1]) + np.square(float(z) - center_of_mass[2]))
             mw_distances[i] = atom_masses[atom] * np.abs(distance)
 
-        # sort distnaces from smallest to largest. If we don't do this, files with identical geometries but different arrangements of atoms can be mistakenly assigned as unique.
+        #sort distnaces from smallest to largest. If we don't do this, files with identical geometries but different arrangements of atoms can be mistakenly assigned as unique.
         sorted_indices = np.argsort(mw_distances)
         sorted_distances = mw_distances[sorted_indices]
         
@@ -85,18 +86,19 @@ def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
         #compute angle between the two vectors (this is the cosine similarity!)
         similarity = dot_product / (magnitude1 * magnitude2)
 
-        #scale the similiarity such that it returns a number understandable by our human brains. 
-        #With this, two vectors that are identical return a value of 100 (100%) similiar. Perpindicular vectors yield a value of 0 (0% similiar), and equal but opposite vectors yield a value of -100 (totally opposite).
-        similarity_scale = (200/np.pi) * np.arcsin(similarity)
-        similarity_scale = (1. - ((1/np.pi) * np.arccos(similarity))) * 100
+        #for details on this equation, please see the following publication: https://www.frontiersin.org/articles/10.3389/fchem.2019.00519/full
+        cosine_similarity = (1. - ((1/np.pi) * np.arccos(similarity))) * 100
 
         #return the similiarity between the two vectors
-        return similarity_scale
+        return cosine_similarity
 
     def main(directory_or_csv, similarity_threshold, write_to_file):
         '''Main workflow'''
-        
-        # Check if input is a CSV file or a directory
+
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Starting cosine similiarity sorting of the files found in {os.path.basename(directory_or_csv)} ...')
+        QApplication.processEvents()
+
+        #Check if input is a CSV file or a directory
         if directory_or_csv.endswith('.csv'):
             destination = os.path.dirname(directory_or_csv)
             with open(directory_or_csv, 'r') as csvfile:
@@ -121,22 +123,29 @@ def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
         #empty list to write distance vectors to
         vectors = []
 
-        # all molecules should have the same number of atoms, but we'll check for this anyways
+        #all molecules should have the same number of atoms, but we'll check for this anyways
         expected_num_atoms = None
+
+        #Start conversion of atomic coordinates to vectors
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Converting molecular coordinates to a 1D vector composed of mass-weighted atomic distances to the molecular center of mass, sorted from smallest to largest values...')
+        QApplication.processEvents()   
 
         for file_name in file_list:
 
             file_path = os.path.join(destination, file_name)
             coordinates = read_gjf(file_path)
-            # Check the number of atoms in the current molecule
+            #Check the number of atoms in the current molecule
             current_num_atoms = len(coordinates)
             
             if expected_num_atoms is None:
-                # Initialize expected_num_atoms with the number of atoms in the first molecule
+                #Initialize expected_num_atoms with the number of atoms in the first molecule
                 expected_num_atoms = current_num_atoms
+            
             elif current_num_atoms != expected_num_atoms:
-                # Raise an error if the number of atoms is not consistent
-                raise ValueError(f'Number of atoms in {file_name} is inconsistent with the number of atoms in previous .gjf files.')
+                #Raise an error if the number of atoms is not consistent
+                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Number of atoms in {file_name} is inconsistent with the number of atoms in previous .gjf files. Please check that your .gjf files contain reasonable structures.')
+                QApplication.processEvents()
+                return
 
             CoM = calc_center_of_mass(coordinates)
             vector = mass_weighted_distances(coordinates, CoM)
@@ -144,58 +153,69 @@ def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
 
         #determine the similarity between all vectors in the list by computing pairwise cosine similiarities. 
 
-        # List to store indices of duplicate vectors and calculated pairwise similiarities
+        #List to store indices of duplicate vectors and calculated pairwise similiarities
         duplicates = []
         similarity_list = []
 
-        # Make a copy of vectors to preserve the original list
+        #Make a copy of vectors to preserve the original list
         unique_vectors = vectors
 
-        # Iterate through the sorted list of vectors
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Sorting vectors based on cosine similiarity...')
+        QApplication.processEvents()   
+
+        #Iterate through the sorted list of vectors
         for idx_i, (file_name_i, vector_i) in enumerate(vectors):
-            # Skip if the vector is already marked as a duplicate
+            #Skip if the vector is already marked as a duplicate
             if idx_i in duplicates:
                 continue
 
-            # Compare the current vector with others
+            #Compare the current vector with others
             for idx_j, (file_name_j, vector_j) in enumerate(vectors):
                 
-                # Skip comparison with itself or if the vector is already marked as a duplicate
+                #Skip comparison with itself or if the vector is already marked as a duplicate
                 if idx_j <= idx_i or idx_j in duplicates:
                     continue
 
                 try:
-                    # Calculate cosine similarity between vectors
+                    #Calculate cosine similarity between vectors
                     similarity = compute_vector_similarity(vector_i, vector_j)
-                    similarity_list.append([file_name_i, file_name_j, similarity])
                 except ValueError:
                     print(f'{file_name_i} and {file_name_j} are vectors of different sizes and cannot be compared. Are they isomers of one antoher? Check the .gjf file')
-                    continue  # If structures of two different sizes are compared
+                    continue  #If structures of two different sizes are compared
 
-                # Mark the vector as duplicate if similarity is above the threshold
+                #Mark the vector as duplicate if similarity is above the threshold, and specify in the similiarity list that filename_j is not unique compared to filename_i
                 if similarity > similarity_threshold:
                     duplicates.append(idx_j)
-
-        # Remove duplicate vectors from the unique vectors list
+                    similarity_list.append([file_name_i, file_name_j, similarity, 'No'])
+                
+                else: 
+                    similarity_list.append([file_name_i, file_name_j, similarity, 'Yes'])
+                    
+        #Remove duplicate vectors from the unique vectors list
         for index in sorted(duplicates, reverse=True):
             del unique_vectors[index]
 
-        # Check if output directory exists, create if not
+        #Check if output directory exists, create if not
         output_directory = os.path.join(destination, 'uniques')
         i = 1
         while os.path.exists(output_directory):
             try:
-                output_directory = f'{os.path.join(destination, f"uniques_{i}")}' # Alex
+                output_directory = f'{os.path.join(destination, f"uniques_{i}")}' #Alex
                 os.makedirs(output_directory)
-                break  # Break the loop if the directory is successfully created
+                break  #Break the loop if the directory is successfully created
             except FileExistsError:
                 i += 1
 
         if not os.path.exists(output_directory):
             os.makedirs(output_directory)
 
-        # copy unique files to unqiues directory
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {len(unique_vectors)} unique geometries based on cosine similarity and energy have been copied to {os.path.basename(output_directory)}:')
+        #copy unique files to unqiues directory
+        if directory_or_csv.lower().endswith('.csv'):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {len(unique_vectors)} unique geometries identified by cosine similiarty and energetic sorting are being copied to {os.path.basename(output_directory)}:')
+
+        else:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {len(unique_vectors)} unique geometries identified by cosine similiarty are being copied to {os.path.basename(output_directory)}:')
+
         for file, _ in unique_vectors:
             #print(file)
             shutil.copy(os.path.join(destination, file), os.path.join(output_directory, file))
@@ -204,18 +224,18 @@ def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
             sim_file = os.path.join(output_directory, 'similarities.csv')
 
             #header for the .csv
-            header = ['Molecule 1', 'Molecule 2', 'Cosine Similarity']
+            header = ['Molecule 1', 'Molecule 2', 'Cosine Similarity', 'Molecule 2 unique?']
             
             #convert similiarity list to a numpy array and round the similiarities to 2 decimal places
             similarity_list = np.array(similarity_list)
             similarity_list[:, 2] = np.round(similarity_list[:, 2].astype(float), 5)
             
-            # Concatenate the header as the first row
+            #Concatenate the header as the first row
             similarity_list_with_header = np.vstack([header, similarity_list])
             
-            # Save the array to a text file with consistent spacing
+            #Save the array to a text file with consistent spacing
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Writing pairwise similiarities to {os.path.join(os.path.basename(output_directory), os.path.basename(sim_file))}.')
-            np.savetxt(sim_file, similarity_list_with_header, fmt='%-30s,%-30s,%-30s')
+            np.savetxt(sim_file, similarity_list_with_header, fmt='%-30s,%-30s,%-30s,%-30s')
 
     #execute main function to calculate molecular similarity
     stime = time.time()
@@ -223,8 +243,9 @@ def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
     ftime = time.time()
 
     print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Similarity analysis was completed in {np.round((ftime - stime),2)} seconds.')
+    return
 
-# for external testing
+#for external testing
 if __name__ == "__main__":
     directory_or_csv = r'D:\OneDrive\OneDrive - University of Waterloo\Waterloo\MobCal-MPI\MobCal-MPI\Manual\Appendix_A\CREST_Outputs\cosine_sim_testing_3\Energies.csv'
     similarity_threshold = 99.

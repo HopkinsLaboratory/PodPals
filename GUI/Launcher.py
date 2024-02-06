@@ -171,7 +171,7 @@ if __name__ == '__main__':
     check_git()
 
     #check that all required python modules are installed
-    required_packages = ['numpy', 'scipy', 'matplotlib', 'git', 'PyQt6', 'pandas', 'openpyxl', 'csv', 'natsort', ]
+    required_packages = ['numpy', 'scipy', 'matplotlib', 'git', 'lxml', 'PyQt6', 'pandas', 'openpyxl', 'csv', 'natsort']
     check_python_packages(required_packages)
 
 #Now that all the required packages are installed, we can import the modules/functions used by the GUI
@@ -229,12 +229,12 @@ def check_dependencies():
 #Check for all dependencies
 check_dependencies()
 
+#import everything from the main GUI .py file, including the check_for_update_and_prompt function called below
 from gui.ORCA_Analysis_GUI import *
-from gui.Update import Update_GUI_files
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     main_win = ORCAAnalysisSuite()
     main_win.show() #show the main window
-    main_win.check_for_update_and_prompt()  #Check for updates after showing the window    
+    #main_win.check_for_update_and_prompt()  #Check for updates after showing the window    
     sys.exit(app.exec())

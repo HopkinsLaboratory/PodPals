@@ -1,7 +1,12 @@
 import git, os, sys, shutil, subprocess, stat, time
+from datetime import datetime
+from PyQt6.QtWidgets import QApplication
 
 def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function):
     '''Updates the .py files associated with the MobCal-MPI GUI. Inputs are the repo URL,  the directory where the GUI .py launcher is located, and a .txt file containing the SHA value of the user's local clone of the GUI.'''
+
+    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Cloning {repo_url} ...')
+    QApplication.processEvents()
 
     # Define the repository URL
     temp_dir = os.path.join(root, 'temp')
@@ -13,17 +18,25 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function):
     # Clone the GitHub repository to the temporary directory
     try: 
         repo = git.Repo.clone_from(repo_url, temp_dir, branch='master')
-    except Exception as e: 
-        print(f'Exception: {e}')
-        print('Unable to access github to check for updates, likely due to lack of an internet connection...')
-        print('Please feel free to use the local version of the GUI and update once your internet connection is retored.')
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Cloning complete.')
+        QApplication.processEvents()
     
+    except Exception as e: 
+        print(f'An exception occured when attempting to clone the ORCA Analysis GUI repo: {e}')
+        print('This block is most commonly entered due to lack of an internet connection, although the error message above may indicate otherwise... Use your best judgement :)')
+        print('Please feel free to use the local version of the GUI and update once your internet connection is retored.')
+        QApplication.processEvents()
+        return
+
+    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Updating files...')
+    QApplication.processEvents()
+
     top_dir = os.path.dirname(root)
 
     # A handy dictionary to hold the paths of the files to be updated for subsequent looping. Syntax is as follows- Path to local file : Path to cloned GitHub file
 
     update_files = {
-        str(os.path.join(top_dir, 'Sample_Files')): str(os.path.join(temp_dir, 'Sample_Files')), #Sample files to accompany to GUI
+        #str(os.path.join(top_dir, 'Sample_Files')): str(os.path.join(temp_dir, 'Sample_Files')), #Sample files to accompany to GUI
         str(os.path.join(top_dir, 'Documentation.docx')): str(os.path.join(temp_dir, 'Documentation.docx')), #GUI documentation
         str(os.path.join(root, 'Launcher.py')): str(os.path.join(temp_dir, 'GUI', 'Launcher.py')), #GUI launcher
         str(os.path.join(root, 'gui', 'Update.py')): str(os.path.join(temp_dir, 'GUI', 'gui', 'Update.py')), #Update function
@@ -78,11 +91,12 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function):
             subprocess.Popen(['python', update_script_path], shell=True)
 
         except subprocess.SubprocessError as e:
-            print(f'A subprocess error occurred while executing {update_script_path}: {e}')
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} A subprocess error occurred while updating files from the script {update_script_path}: {e}')
             return
 
         except Exception as e:
-            print(f'An unexpected error occurred when trying execute {update_script_path}: {e}')
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An unexpected error occurred when trying execute {update_script_path}: {e}')
+            print('Please report this error and the sequence of events that caused it to appear to the issues section of the GitHub repo.')
             return
 
         with open(ID_file,'w') as opf:
@@ -90,7 +104,7 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function):
 
         return
     
-    #Update process for Linux users
+    #Update process for Mac/Linux users
     else:
         for local_path, github_path in update_files.items():
             # Similar to Windows, but using direct Python commands instead of writing to a script
