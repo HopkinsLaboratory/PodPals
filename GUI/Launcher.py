@@ -223,18 +223,23 @@ def check_dependencies():
                 missing_dependencies.append(func)
 
     if missing_dependencies:
-        print('The following Python modules are missing. Please reclone the repo from Github and try again, ensuring the missing Python modules are present:', ",\n".join(missing_dependencies))
-        return
-
-#Check for all dependencies
-check_dependencies()
+        print('The following Python modules are missing. Please reclone the repo from Github and try again, ensuring the missing Python modules are present:\n', ",\n".join(missing_dependencies))
+        return False
+    
+    else:
+        return True
 
 #import everything from the main GUI .py file, including the check_for_update_and_prompt function called below
 from gui.ORCA_Analysis_GUI import *
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    main_win = ORCAAnalysisSuite()
-    main_win.show() #show the main window
-    main_win.check_for_update_and_prompt()  #Check for updates after showing the window    
-    sys.exit(app.exec())
+    #Check for all dependencies
+    dependencies_check = check_dependencies()
+
+    #If dependencies are present, proceed to launch the GUI
+    if dependencies_check:
+        app = QApplication(sys.argv)
+        main_win = ORCAAnalysisSuite()
+        main_win.show() #show the main window
+        main_win.check_for_update_and_prompt()  #Check for updates after showing the window    
+        sys.exit(app.exec())

@@ -22,34 +22,21 @@ def ORCA_CCSDT(directory):
     # Format the header for consistent spacing 
     header = '{}\n'.format(','.join(['{:<25}'] * len(properties)))
 
-    #Create output file and write header to it
+    # Create output file and write header to it, ensuring that previous files of the same name are not overwritten
     output_csv = os.path.join(directory, 'DLPNO_CCSDT_energies.csv')
 
+    i = 2
+    while os.path.isfile(output_csv):
+        output_csv = os.path.join(directory, f'DLPNO_CCSDT_energies_v{i}.csv')
+        i += 1
+    
     try:
         with open(output_csv, 'w') as opf:
             opf.write(header.format(*properties))
-
-    except (PermissionError, FileExistsError):
-        
-        i = 1
-        if FileExistsError:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} A file with the same name already exists. Writing data to a new file name.')
-            QApplication.processEvents()
-
-        if PermissionError:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} A file with the same name is already open. Writing data to a new file name.')
-            QApplication.processEvents()
-
-        while os.path.isfile(output_csv):
-            output_csv = os.path.join(directory, f'DLPNO_CCSDT_energies_{i}.csv')
-            i += 1
-        
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The new output file is {os.path.basename(output_csv)}')
-        QApplication.processEvents()
-
-        with open(output_csv, 'w') as opf:
-            opf.write(header.format(*properties))
     
+    except IOError as e:
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An error was encountered when writing to {os.path.basename(output_csv)}: {e}.\nFile processing will not proceed.')
+        return
     
     missing_CCSDT = [] #list to write files that are missing CCSDT energies
 
@@ -75,10 +62,8 @@ def ORCA_CCSDT(directory):
         with open(output_csv, 'a') as opf:
             opf.write(format_str.format(*values))
 
-    format_missing_CCSDT = str('\n'.join(missing_CCSDT))
-
     if len(missing_CCSDT) > 0:
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {len(missing_CCSDT)} file(s) did not contain CCSDT energies:\n{format_missing_CCSDT}')
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {len(missing_CCSDT)} file(s) did not contain CCSDT energies:\n{'\n'.join(missing_CCSDT)}')
 
     print(f'{datetime.now().strftime("[ %H:%M:%S ]")} DLPNO-CCSD(T) energies were extracted from {len(filenames)} ORCA .out files in {np.round(time.time() - start,2)} seconds.')
 

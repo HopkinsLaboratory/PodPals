@@ -30,7 +30,6 @@ from Python.Special_Analyses.BW_CCS_Analyzer import BW_CCS_Analysis
 #Import the GitHub update function
 from gui.Update import Update_GUI_files
 
-
 class TextRedirect(StringIO):
     #Constructor (__init__ method) for the custom stream class
     def __init__(self, update_output=None, *args, **kwargs):
@@ -421,7 +420,7 @@ class CosineSimTab(QWidget):
 
         #Check if a file path was selected
         if file_path:
-            self.directory_input.setText(directory_path)
+            self.directory_input.setText(file_path)
 
     def run_cosine_similarity(self):
         #Get the selected directory or CSV file, as well as the similarity threshold
@@ -499,7 +498,7 @@ class CosineSimTab(QWidget):
 
         #If a directory is provided, ensure that the directory contains at least two .gjf files
         if os.path.isdir(input_path):
-            gjf_files = [x for x in os.listdir(directory) if x.lower().endswith('.gjf')]
+            gjf_files = [x for x in os.listdir(input_path) if x.lower().endswith('.gjf')]
 
             if len(gjf_files) == 0:
                 print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The specified directory does not contain any gjf files!')
@@ -1180,7 +1179,7 @@ class ORCA_Optim_plot_Tab(QWidget):
 
         #Input validation
         if not os.path.isfile(input_path):
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The input path must contain the directory and file name of a .out file. {input_path} does not lead to a not a valid file.')
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The input path must contain the directory and file name of a .out file. {input_path} is not a valid file.')
             return
 
         elif not input_path.lower().endswith('.out'):
@@ -1281,46 +1280,32 @@ class DFTThermochemTab(QWidget):
 
     def run_dft_thermochemistry(self):
         input_path = self.directory_input.text()
+        T = self.temp_input.value()
+        p = self.pressure_input.value()
+        vib_scl = self.vib_scaling_input.value()
+        sort_option = self.sort_by_combo.currentText()
         
         #check that the input path is a real directory
         if not os.path.isdir(input_path):
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {input_path} is not a valid directory. Please check that the directory you have specified is correct, then try again.')
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {input_path} is not a valid directory.')
             return
+
+        #Ensure that T, p, and the vib scaling factor are numerical imputs that are greater than zero
+        if T <= 0:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Temperature cannot be zero or negative.')
+            return   
         
-        #get T, p, and vib scaling factor what simultaneously checkthing that their inputs for correct format
-        try:
-            T = float(self.temp_input.text())
-            if T < 0:
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Temperature cannot be negative.')
-                return   
-        except ValueError:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Temperature input must be numeric.')
-            return
+        if p <= 0:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Pressure cannot be zero or negative.')
+            return    
 
-        try:
-            p = float(self.pressure_input.text())
-            if p < 0:
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Pressure cannot be negative.')
-                return    
-        except ValueError:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Pressure input must be numeric.')
-            return
+        if vib_scl <= 0:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Vibrational scaling factor cannot be zero or negative.')
+            return            
 
-        try:
-            vib_scl = float(self.vib_scaling_input.text())
-
-            if vib_scl <= 0:
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Vibrational scaling factor cannot be zero or negative.')
-                return
-
-        except ValueError:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Vibrational scaling factor input must be numeric.')
-            return
-        
-        #get sorting option
-        sort_option = self.sort_by_combo.currentText()
+        #Assign sorting function to an input understandable by the ORCA_Thermochem_Calculator function
         sort_by_map = {'Filename': 'F', 'Gibbs': 'G', 'Enthalpy (H)': 'H', 'Entropy (S)': 'S', 'Thermal Energy (E)': 'E', 'Zero-point energy': 'ZPE'}
-        sort_by = sort_by_map.get(sort_option, 'F') #get option based on combo-box selection, defaulting to filename sorting if an invalid option is chosen (which theoretically should never happen)
+        sort_by = sort_by_map.get(sort_option, 'F') #get option based on combo-box selection, defaulting to filename sorting if an invalid option is chosen (which theoretically should never happen, but you never know...)
 
         if sort_option == 'Filename':
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Thermochem is being analyzed at {T} K, {p} Pa. Output files will be sorted by energy according to the order of the {sort_option}s.')
@@ -1374,14 +1359,12 @@ class CCSDTTab(QWidget):
         #Get the selected directory or CSV file
         input_path = self.directory_input.text()
 
-        try:
-            if not os.path.isdir(input_path):
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {input_path} is not a valid directory. Please check that the directory you have specified is correct, then try again.')
-            else:
-                ORCA_CCSDT(input_path)
-
-        except Exception as e:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: {e}\nTraceback: {traceback.format_exc()}')
+        if not os.path.isdir(input_path):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {input_path} is not a valid directory. Please check that the directory you have specified is correct, then try again.')
+            return
+        
+        else:
+            ORCA_CCSDT(input_path)
 
 class Extract_IR_SpectraTab(QWidget):
     def __init__(self, text_redirector, parent=None):
@@ -1484,16 +1467,16 @@ class Extract_IR_SpectraTab(QWidget):
         layout.addSpacing(5)
 
         #Normalization Checkbox
-        self.normalization_checkbox = QCheckBox("Normalize Spectra?")
+        self.normalization_checkbox = QCheckBox("Normalize spectra?")
         layout.addWidget(self.normalization_checkbox)
 
         #Plotting Checkbox
-        self.plotting_checkbox = QCheckBox("Plot Spectra externally?")
+        self.plotting_checkbox = QCheckBox("Plot spectra externally?")
         layout.addWidget(self.plotting_checkbox)
         layout.addSpacing(10)
 
         #Run Button
-        run_button = QPushButton('Extract/Plot IR Spectra')
+        run_button = QPushButton('Extract/Plot IR spectra')
         run_button.clicked.connect(self.run_IR_extract)
         layout.addWidget(run_button)
 
@@ -1505,7 +1488,7 @@ class Extract_IR_SpectraTab(QWidget):
         self.setLayout(layout)
 
     def browse_directory(self):
-        directory_path = QFileDialog.getOpenFileName(self, "Select .out file", "", "OUT Files (*.out)")
+        directory_path = QFileDialog.getOpenFileName(self, 'Select .out file', '', 'OUT Files (*.out)')
         if directory_path[0]:
             self.directory_input.setText(directory_path[0])
 
@@ -1520,13 +1503,19 @@ class Extract_IR_SpectraTab(QWidget):
         normalization = self.normalization_checkbox.isChecked() #true if checked, false if not
         plotting = self.plotting_checkbox.isChecked() #true if checked, false if not
 
-        #Check if the values meet your specific conditions
+        #Check if the input values meet logical checks
+        if not os.path.isdir(directory):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {directory} is not a valid directory. Please check that the file you have specified is correct, then try again.')
+            return
+        
         if fwhm <= 0:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} FWHM must be greater than 0.\n')
             return
+        
         if lower_bound < 0:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The lower-bound of the frequency range to the exported cannot be negative.')
             return
+        
         if upper_bound <= lower_bound:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The upper bound must be greater than the lower-bound of the frequency range to the exported.')
             return
@@ -1535,12 +1524,8 @@ class Extract_IR_SpectraTab(QWidget):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The step size of for the frequency range interpolation must be greater than 0.')
             return
         
-        if vib_scl <= 0:  #Assuming vib_scl should be between 0 and 2
+        if vib_scl <= 0:  #vib_scl input is limited to be between 0 and 2
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The harmonic scaling factor must be greater than zero.')
-            return
-        
-        if not os.path.isdir(directory):
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {directory} is not a valid directory. Please check that the file you have specified is correct, then try again.')
             return
         
         #if all checks pass, proceed to extract the IR spectra from each .out file
@@ -1580,7 +1565,7 @@ class Extract_TDDFT_VG_SpectraTab(QWidget):
         input_unit_label = QLabel('Input unit:')
         self.input_unit_combo = QComboBox()
         self.input_unit_combo.addItems(['nm', 'cm**-1', 'eV'])
-        self.input_unit_combo.setCurrentText('wavenumber')  #Default to wavenumber
+        self.input_unit_combo.setCurrentText('nm')  #Default to wavelength
         self.input_unit_combo.setMinimumWidth(30)  
         
         unit_layout.addWidget(input_unit_label)
@@ -1591,7 +1576,7 @@ class Extract_TDDFT_VG_SpectraTab(QWidget):
         output_unit_label = QLabel('Output unit:')
         self.output_unit_combo = QComboBox()
         self.output_unit_combo.addItems(['nm', 'cm**-1', 'eV'])
-        self.output_unit_combo.setCurrentText('wavenumber')  #Default to wavenumber
+        self.output_unit_combo.setCurrentText('nm')  #Default to wavelength
         self.output_unit_combo.currentTextChanged.connect(self.update_output_values) #Connect output unit to the auto-update method
         self.output_unit_combo.setMinimumWidth(30)  
 
@@ -1672,9 +1657,9 @@ class Extract_TDDFT_VG_SpectraTab(QWidget):
 
         #Basename input
         basename_layout = QHBoxLayout()
-        output_file_label = QLabel('Basename:')
+        output_file_label = QLabel('Output basename:')
         self.output_file_input = QLineEdit()
-        self.output_file_input.setPlaceholderText('Enter the basename of your .spectrum and/or .spectrum.rootN files.')
+        self.output_file_input.setPlaceholderText('Enter a basename for the .xlsx and/or png output files.')
         
         basename_layout.addWidget(output_file_label)
         basename_layout.addWidget(self.output_file_input)
@@ -1686,14 +1671,34 @@ class Extract_TDDFT_VG_SpectraTab(QWidget):
         self.normalization_checkbox = QCheckBox('Normalize Output?')
         self.normalization_checkbox.setChecked(True)  #Default checked
         layout.addWidget(self.normalization_checkbox)
+        layout.addSpacing(5)
+
+        #Plotting layout
+        plotting_layout = QHBoxLayout()
 
         #Plotting checkbox
         self.plot_checkbox = QCheckBox('Plot spectra externally?')
-        layout.addWidget(self.plot_checkbox)
+        self.plot_checkbox.toggled.connect(self.on_plot_checkbox_toggled)
+
+        #Plots per row input
+        plots_per_row_label = QLabel('Plots per row:')
+        self.plots_per_row_input = QSpinBox()
+        self.plots_per_row_input.setRange(1, 10)
+        self.plots_per_row_input.setValue(2)
+        self.plots_per_row_input.setMinimumWidth(50)
+        self.plots_per_row_input.setEnabled(False) #only allow input if plotting is checked
+
+        plotting_layout.addWidget(self.plot_checkbox)
+        plotting_layout.addSpacing(5)
+        plotting_layout.addWidget(plots_per_row_label)
+        plotting_layout.addWidget(self.plots_per_row_input)
+        plotting_layout.addStretch(1)
+
+        layout.addLayout(plotting_layout)
         layout.addSpacing(10)
 
         #Run Button
-        run_button = QPushButton('Extract UV-Vis Spectra (ESD)')
+        run_button = QPushButton('Extract UV-Vis Spectra (VGFC)')
         run_button.clicked.connect(self.run_extract_ESD)
         layout.addWidget(run_button)
 
@@ -1702,7 +1707,7 @@ class Extract_TDDFT_VG_SpectraTab(QWidget):
         self.setLayout(layout)
 
     def browse_directory(self):
-        directory_path = QFileDialog.getExistingDirectory(self, "Select Directory")
+        directory_path = QFileDialog.getExistingDirectory(self, 'Select Directory')
 
         if directory_path:
             self.directory_input.setText(directory_path)
@@ -1736,6 +1741,10 @@ class Extract_TDDFT_VG_SpectraTab(QWidget):
         elif unit == 'eV':
             self.shift_input.setValue(-0.25)
 
+    #Enable plotting options only when the plotting option is checked
+    def on_plot_checkbox_toggled(self, checked):
+        self.plots_per_row_input.setEnabled(checked)
+
     def run_extract_ESD(self):
         
         #get parameters from GUI interface and assign them to variables
@@ -1751,7 +1760,7 @@ class Extract_TDDFT_VG_SpectraTab(QWidget):
         output_file_basename = self.output_file_input.text()
         plotting = self.plot_checkbox.isChecked()
 
-        #check that data provided in the GUI is correctly set up
+        #Input validation
         if not os.path.isdir(directory):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {directory} is not a valid directory. Please check that the directory you have specified is correct, then try again.')
             return
@@ -1764,10 +1773,17 @@ class Extract_TDDFT_VG_SpectraTab(QWidget):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The lower bound of the output window must be greater than the upper bound!')
             return
         
-        if output_spacing < 0:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The step size for the output interpolation cannot be negative!')
+        if output_spacing <= 0:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The step size for the output interpolation cannot be zero or negative!')
             return
         
+        #Ensure plots per row is given a value (even if its not used)
+        if plotting:
+            plots_per_row = self.plots_per_row_input.value()
+        
+        else:
+            plots_per_row = 2 #default
+
         #check for .spectrum.root and .spectrum files, and choose the appropriate analysis depending on what is present
         contains_spectrum_root = any('.spectrum.root' in file for file in os.listdir(directory))
         ends_with_spectrum = any(file.endswith('.spectrum') for file in os.listdir(directory))
@@ -1776,7 +1792,7 @@ class Extract_TDDFT_VG_SpectraTab(QWidget):
         if (contains_spectrum_root and ends_with_spectrum):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Both .spectrum.root and .spectrum files were found in the provided directory. All spectra will be processed from the root files. Please ensure that all .spectrum.root files are present, otherwise the analysis will be incomplete.')
             QApplication.processEvents()
-            extract_ESD_spectrum_root_files(directory, input_unit, shift_unit, output_unit, shift, output_lowervalue, output_uppervalue, output_spacing, output_file_basename, normalize_output, plotting)
+            extract_ESD_spectrum_root_files(directory, input_unit, shift_unit, output_unit, shift, output_lowervalue, output_uppervalue, output_spacing, output_file_basename, normalize_output, plotting, plots_per_row)
 
         #If directory contains .spectrum files, but not .spectrum.root files:
         elif ends_with_spectrum and not contains_spectrum_root:
@@ -1922,6 +1938,8 @@ class BWCCS_Tab(QWidget):
         temp = self.temp_input.value()
 
         #check that data provided in the GUI is correctly set up
+        
+        #thermochem .csv file checks
         if not os.path.isfile(thermochem_file):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {thermochem_file} is not a valid file. Please check that the directory you have specified is correct, then try again.')
             return
@@ -1929,6 +1947,7 @@ class BWCCS_Tab(QWidget):
         elif not thermochem_file.lower().endswith('.csv'):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The thermochem file must be a directory path + filename that ends with .csv. This should also be the output from the Thermochem Analyzer function in this GUI.')
 
+        #CCS .csv file checks
         elif not os.path.isfile(CCS_file):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {CCS_file} is not a valid file. Please check that the directory you have specified is correct, then try again.')
             return
@@ -1936,6 +1955,7 @@ class BWCCS_Tab(QWidget):
         elif not CCS_file.lower().endswith('.csv'):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The CCS file must be a directory path + filename that ends with .csv. This should also be the output from the MobCal-MPI 2.0 GUI moutAnalyzer function.')
 
+        #output .xlsx file path checks
         elif not os.path.isdir(os.path.dirname(output_file)):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {os.path.dirname(output_file)} is not a directory to write the output .xlsx file to. Please create it or specifcy the file in a directory that exists, then try again.')
             return
@@ -1944,25 +1964,25 @@ class BWCCS_Tab(QWidget):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The output file must be a directory path + filename that ends with .xlsx.')
             return
 
+        #temperature checks for doing the Boltzmann-weighting
         elif not temp > 0:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The temperature specified must be greater than 0.')
             return           
         
+        #Check if a DLPNO-CCSD(T) file was given. If not, assign it a value of None
+        if CCSDT_file.strip() == '':
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No DLPNO-CCSD(T) file was provided. The BW-CCS will be calculated using DFT electronic eneriges.')
+            CCSDT_file = None
+
         elif not os.path.isfile(CCSDT_file):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {CCS_file} is not a valid file. Please check that the directory you have specified is correct, then try again.')
             return            
 
         elif not CCSDT_file.lower().endswith('.csv'):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The DLPNO-CCSD(T) file must be a directory path + filename that ends with .csv. This should also be the output from the CCSDT Analyzer function in this GUI.')
-
-        #Check if a DLPNO-CCSD(T) file was given. If not, assign it a value of None
-        elif CCSDT_file.strip() == '':
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No DLPNO-CCSD(T) file was provided. The BW-CCS will be calculated using DFT electronic eneriges.')
-            CCSDT_file = None
-
-        #if all checks pass, proceed to calcualte the BW CCS
-        else:
-            BW_CCS_Analysis(thermochem_file, CCSDT_file, CCS_file, output_file, temp)
+            return
+        
+        BW_CCS_Analysis(thermochem_file, CCSDT_file, CCS_file, output_file, temp)
 
 class LED_Analysis_Tab(QWidget):
     def __init__(self, text_redirector, parent=None):
@@ -2075,7 +2095,7 @@ class LED_Analysis_Tab(QWidget):
 
         #if all checks pass, proceed to extract spectra
         else:
-            LED_Analysis(thermochem_file, CCSDT_file, CCS_file, output_file = 'LED_Analysis.csv')
+            LED_Analysis(frag1_file, frag2_file, Parent_LED_file, output_file = 'LED_Analysis.csv')
 
 class NEB_Analysis_Tab(QWidget):
     def __init__(self, text_redirector, parent=None):
