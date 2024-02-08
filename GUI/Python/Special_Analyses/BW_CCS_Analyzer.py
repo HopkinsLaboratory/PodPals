@@ -150,7 +150,7 @@ def BW_CCS_Analysis(dft_file_path, dlpno_file_path, ccs_file_path, output_file_p
             
             dlpno_data = read_csv_and_clean_headers(dlpno_file_path)
             if dlpno_data is not None:
-                dlpno_check = check_required_columns(dlpno_data, ['Filename', 'DLPNO-CCSD(T) energy'], 'CCSDT file') #returns None on error and the csv data stored in a dataframe on success
+                dlpno_check = check_required_columns(dlpno_data, ['Filename', 'CCSD(T) energy'], 'CCSDT file') #returns None on error and the csv data stored in a dataframe on success
 
                 if dlpno_check:
                     dlpno_data['Filename'] = dlpno_data['Filename'].str.replace('.out', '', regex=False)

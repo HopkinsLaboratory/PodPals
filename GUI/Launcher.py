@@ -1,14 +1,6 @@
 #Import modules needed for preparation of GUI launch
-import importlib
+import importlib, platform, os, sys, shutil, subprocess
 from pathlib import Path
-import platform
-import os
-import random
-import sys
-import shutil 
-import subprocess
-import stat
-import time
 
 # Before the GUI launches, check that the user has the required packages to run the MobCal-MPI GUI
 #The most troublesome package is Git, which also requires GitHub desktop to be on the user's machine. First, we check if it is installed.
@@ -181,7 +173,7 @@ def check_dependencies():
     dependencies = {
         'Input_Output_operations': [
             'Python.Input_Output_operations.xyz_file_splitter.xyz_file_splitter',
-            'Python.Input_Output_operations.Gaussian_gjf_to_ORCA_input.Gaussian_gjf_to_ORCA_input',
+            'Python.Input_Output_operations.Generate_ORCA_inp.Generate_ORCA_inp',
             'Python.Input_Output_operations.cosine_sim.cosine_sim',
             'Python.Input_Output_operations.ORCA_out_to_ORCA_inp.ORCA_out_to_ORCA_inp',
             'Python.Input_Output_operations.ORCA_out_to_ORCA_TDDFT_VG.ORCA_out_to_ORCA_TDDFT_VG',
@@ -189,7 +181,7 @@ def check_dependencies():
         'ORCA_out_analyses': [
             'Python.ORCA_out_analyses.ORCA_opt_plt.ORCA_opt_plt',
             'Python.ORCA_out_analyses.ORCA_Thermochem_Calculator.ORCA_Thermochem_Calculator',
-            'Python.ORCA_out_analyses.ORCA_CCSDT.ORCA_CCSDT',
+            'Python.ORCA_out_analyses.ORCA_CoupledCluster.extract_ORCA_coupled_cluster',
             'Python.ORCA_out_analyses.extract_IR.extract_IR_spectra',
             'Python.ORCA_out_analyses.extract_ESD_spectrum_files.extract_ESD_spectrum_files',
             'Python.ORCA_out_analyses.extract_ESD_spectrum_root_files.extract_ESD_spectrum_root_files',

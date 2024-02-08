@@ -9,6 +9,10 @@ def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line
     filenames = [x for x in os.listdir(directory) if x.lower().endswith('.out') and '_atom' not in x]
     num_files = len(filenames)
 
+    if num_files == 0:
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No .out files were found in {os.path.basename(directory)}.')
+        return
+    
     #Generate the directory/directories to write new files to
     if write_xyz_checked:
         new_dir = os.path.join(directory, 'New_Inputs_xyz')
@@ -159,8 +163,7 @@ def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line
                         
                 #otherwise, write the geometry to the .inp
                 else:
-                    with open(orca_filename, 'a') as opf:
-                        opf.write(f'*xyz {charge} {multiplicity}\n{fs}\n*\n\n')
+                    opf.write(f'*xyz {charge} {multiplicity}\n{fs}\n*\n\n')
         
         #make the .gjf file
         if write_gjf_checked: 
@@ -173,3 +176,22 @@ def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line
    
     print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {num_files} ORCA .out files were converted to ORCA .inp files in {np.round(time.time() - start,2)} seconds.')
     return
+
+#external testing
+if __name__ == '__main__':
+
+    directory = r'D:\OneDrive\OneDrive - University of Waterloo\Waterloo\GitHub\ORCA_Analysis_GUI\Sample_Files\T4_ORCA_out_to_ORCA_inp'
+    mpp = 3500
+    ncores = 8
+    charge = 1
+    multiplicity = 1
+    calc_line = '! wB97X-D3 TightOpt Freq def2-TZVPP def2/J RIJCOSX TightSCF defgrid3'
+    esp_charges_checked = False
+    grid = 0.1
+    rmax = 3.0
+    calc_hess_checked = True
+    polarization_checked = True
+    write_xyz_checked = False
+    write_gjf_checked = True
+
+    ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, calc_hess_checked, polarization_checked, write_xyz_checked, write_gjf_checked)

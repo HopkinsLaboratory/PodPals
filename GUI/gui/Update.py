@@ -46,14 +46,14 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function):
         str(os.path.join(root, 'Python', 'constants_and_conversions.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'constants_and_conversions.py')), #py file with fundamental contants & functions for unit conversions 
 
         str(os.path.join(root, 'Python', 'Input_Output_operations', 'xyz_file_splitter.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'Input_Output_operations', 'xyz_file_splitter.py')), # T1 - xyz file splitter
-        str(os.path.join(root, 'Python', 'Input_Output_operations', 'Gaussian_gjf_to_ORCA_input.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'Input_Output_operations', 'Gaussian_gjf_to_ORCA_input.py')), # T2 - gjf to ORCA .inp
+        str(os.path.join(root, 'Python', 'Input_Output_operations', 'Generate_ORCA_inp.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'Input_Output_operations', 'Generate_ORCA_inp.py')), # T2 - Generate ORCA .inp
         str(os.path.join(root, 'Python', 'Input_Output_operations', 'cosine_sim.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'Input_Output_operations', 'cosine_sim.py')), #T3 - cosine similarity sorting
         str(os.path.join(root, 'Python', 'Input_Output_operations', 'ORCA_out_to_ORCA_inp.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'Input_Output_operations', 'ORCA_out_to_ORCA_inp.py')), #T4- ORCA .out to ORCA .inp
         str(os.path.join(root, 'Python', 'Input_Output_operations', 'ORCA_out_to_ORCA_TDDFT_VG.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'Input_Output_operations', 'ORCA_out_to_ORCA_TDDFT_VG.py')), # T5 - ORCA .out to ORCA .inp to VGFC simluations (TD-DFT)
         
         str(os.path.join(root, 'Python', 'ORCA_out_analyses', 'ORCA_opt_plt.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'ORCA_out_analyses', 'ORCA_opt_plt.py')), # T6 - plotting the ORCA optimiation routine's progress 
         str(os.path.join(root, 'Python', 'ORCA_out_analyses', 'ORCA_Thermochem_Calculator.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'ORCA_out_analyses', 'ORCA_Thermochem_Calculator.py')), # T7 - Calculates thermochem from ORCA .out files 
-        str(os.path.join(root, 'Python', 'ORCA_out_analyses', 'ORCA_CCSDT.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'ORCA_out_analyses', 'ORCA_CCSDT.py')), # T8 - Extracts CCSDT energies from ORCA .out files 
+        str(os.path.join(root, 'Python', 'ORCA_out_analyses', 'ORCA_CoupledCluster.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'ORCA_out_analyses', 'ORCA_CoupledCluster.py')), # T8 - Extracts coupled cluster energies from ORCA .out files 
         str(os.path.join(root, 'Python', 'ORCA_out_analyses', 'extract_IR.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'ORCA_out_analyses', 'extract_IR.py')), # T9 - Exacts and plots IR spectra from ORCA .out files
         str(os.path.join(root, 'Python', 'ORCA_out_analyses', 'extract_ESD_spectrum_root_files.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'ORCA_out_analyses', 'extract_ESD_spectrum_root_files.py')), # T10 - Extract & plot UV spectra from .spectrum.root files
         str(os.path.join(root, 'Python', 'ORCA_out_analyses', 'extract_ESD_spectrum_files.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'ORCA_out_analyses', 'extract_ESD_spectrum_files.py')), # T10 - Extract & plot UV spectra from .spectrum files

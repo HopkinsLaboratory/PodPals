@@ -4,11 +4,15 @@ import numpy as np
 from datetime import datetime
 from PyQt6.QtWidgets import QApplication
 
-def Gaussian_gjf_to_ORCA_input(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, calc_hess_checked, polarization_checked, write_xyz_checked):
+def Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, calc_hess_checked, polarization_checked, write_xyz_checked):
 
-    #Generate a list of .gjf files from the directory
-    filenames = [x for x in os.listdir(directory) if x.lower().endswith('.gjf')]
+    #Generate a list of files from the directory - currently accepts Gaussian .gjf, .xyz, and ORCA .inp. 
+    filenames = [x for x in os.listdir(directory) if x.lower().endswith('.gjf') or x.lower().endswith('.inp') or x.lower().endswith('.xyz')]
     num_files = len(filenames)
+
+    if num_files == 0:
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No .gjf, .inp, or .xyz files were found in {os.path.basename(directory)}.')
+        return
 
     #Generate a directory to write new files to
 
@@ -86,6 +90,7 @@ def Gaussian_gjf_to_ORCA_input(directory, mpp, ncores, charge, multiplicity, cal
         geometry = []  #Initialize the geom list
 
         for line in lines:
+            line = line.strip()
             split_line = line.split() #split by whitespace
             
             #the only entry with 4 splits, where instance 1 is an atom symbol (sometimes an atom number!), and a period in instances 1-3 will be the xyz coordiante lines. Write these to the geom list
@@ -154,8 +159,25 @@ def Gaussian_gjf_to_ORCA_input(directory, mpp, ncores, charge, multiplicity, cal
                         
                 #otherwise, write the geometry to the .inp
                 else:
-                    with open(orca_filename, 'a') as opf:
-                        opf.write(f'*xyz {charge} {multiplicity}\n{fs}\n*\n\n')
+                    opf.write(f'*xyz {charge} {multiplicity}\n{fs}\n*\n\n')
 
     print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {num_files} .gjf files were converted to ORCA .inp files in {np.round(time.time() - start,2)} seconds.')
     return
+
+#external testing
+if __name__ == '__main__':
+
+    directory = r'D:\OneDrive\OneDrive - University of Waterloo\Waterloo\GitHub\ORCA_Analysis_GUI\Sample_Files\T3_gjf_to_ORCA_inp\inp_modification'
+    mpp = 3500
+    ncores = 8
+    charge = 1
+    multiplicity = 1
+    calc_line = '! wB97X-D3 TightOpt Freq def2-TZVPP def2/J RIJCOSX TightSCF defgrid3'
+    esp_charges_checked = False
+    grid = 0.1
+    rmax = 3.0
+    calc_hess_checked = True
+    polarization_checked = True
+    write_xyz_checked = False
+
+    Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, calc_hess_checked, polarization_checked, write_xyz_checked)

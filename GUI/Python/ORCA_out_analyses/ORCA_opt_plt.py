@@ -21,30 +21,37 @@ def ORCA_opt_plt(file, save_plot = False):
         e_1st_scf_cycle, change_1st_scf_cycle = [], []
 
         for index, line in enumerate(lines):
-            if line.startswith("FINAL SINGLE POINT ENERGY"):  # ENERGY (1)
+            #Energy
+            if line.startswith('FINAL SINGLE POINT ENERGY'):  
                 energy.append(float(line.split()[4]))
-
-            elif line.startswith("          Energy change"):  # ENERGY CHANGE (2)
+            
+            #Energy change
+            elif line.startswith('          Energy change'):  
                 e_change.append(float(line.split()[2]))
                 e_threshold.append(float(line.split()[3]))
 
-            elif line.startswith("          MAX gradient"):  # MAX GRADIENT (3)
+            #Max gradient (3)
+            elif line.startswith('          MAX gradient'):  
                 max_grad.append(float(line.split()[2]))
                 max_grad_threshold.append(float(line.split()[3]))
 
-            elif line.startswith("          MAX step"):  # MAX STEP (4)
+            #Max step (4)
+            elif line.startswith('          MAX step'):  
                 max_step.append(float(line.split()[2]))
                 max_step_threshold.append(float(line.split()[3]))
 
-            elif line.startswith("          RMS gradient"):  # RMS GRADIENT (5)
+            #RMS gradient
+            elif line.startswith('          RMS gradient'):  
                 rms_grad.append(float(line.split()[2]))
                 rms_grad_threshold.append(float(line.split()[3]))
 
-            elif line.startswith("          RMS step"):  # RMS STEP (6)
+            #RMS step
+            elif line.startswith('          RMS step'):  
                 rms_step.append(float(line.split()[2]))
                 rms_step_threshold.append(float(line.split()[3]))
 
-            elif line.startswith("                         !        ITERATION"):  # 1st SCF cycle (7)
+            #1st SCF cycle
+            elif line.startswith('                         !        ITERATION'):  
                 e_1st_scf_cycle.append(float(lines[index + 1].split()[3]))
                 change_1st_scf_cycle.append(float(lines[index + 2].split()[3]))
 
@@ -59,13 +66,13 @@ def ORCA_opt_plt(file, save_plot = False):
         plt.figure()
 
         ax1 = plt.subplot(211)
-        plt.title("1st SCF CYCLE Energy")
+        plt.title('1st SCF cycle energy')
         ax1.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
         ax1.plot(range(1, len(e_1st_scf_cycle) + 1), e_1st_scf_cycle, color='red')
         ax1.grid(True)
 
         ax2 = plt.subplot(212)
-        plt.title("1st SCF CYCLE Energy Change")
+        plt.title('1st SCF cycle energy change')
         ax2.plot(range(1, len(change_1st_scf_cycle) + 1), change_1st_scf_cycle, color='blue')
         ax2.grid(True)
 
@@ -75,50 +82,50 @@ def ORCA_opt_plt(file, save_plot = False):
                     rms_step, rms_step_threshold):
         plt.figure(figsize=(20, 10))
 
-        axes = []  # Collect axes for setting grid
+        axes = []  #Collect axes for setting grid
         
         ax1 = plt.subplot(321)
         axes.append(ax1)
-        plt.title("Energy Change")
-        ax1.plot(range(1, len(e_change) + 1), e_change, color='red', label='Energy Change')
+        plt.title('Energy Change')
+        ax1.plot(range(1, len(e_change) + 1), e_change, color='red', label='Energy change')
         ax1.plot(range(1, len(e_threshold) + 1), e_threshold, color='blue', linestyle='dotted', label='Threshold')
         plt.legend()
 
         ax2 = plt.subplot(322)
         axes.append(ax2)
-        plt.title("SCF Energy")
+        plt.title('SCF Energy')
         ax2.yaxis.set_major_formatter(FormatStrFormatter('%.5f'))
         ax2.scatter(range(len(energy)), energy, color='red', marker='o')
 
         ax3 = plt.subplot(323)
         axes.append(ax3)
-        plt.title("Max Gradient")
-        ax3.plot(range(len(max_grad)), max_grad, color='green', label='Max Gradient')
+        plt.title('Max Gradient')
+        ax3.plot(range(len(max_grad)), max_grad, color='green', label='Max gradient')
         ax3.plot(range(len(max_grad_threshold)), max_grad_threshold, color='blue', linestyle='dotted', label='Threshold')
         plt.legend()
 
         ax4 = plt.subplot(324)
         axes.append(ax4)
-        plt.title("Max Step")
-        ax4.scatter(range(len(max_step)), max_step, color='green', label='Max Step')
+        plt.title('Max Step')
+        ax4.scatter(range(len(max_step)), max_step, color='green', label='Max step')
         ax4.plot(range(len(max_step_threshold)), max_step_threshold, color='blue', linestyle='dotted', label='Threshold')
         plt.legend()
 
         ax5 = plt.subplot(325)
         axes.append(ax5)
-        plt.title("RMS Gradient")
-        ax5.plot(range(len(rms_grad)), rms_grad, color='black', label='RMS Gradient')
+        plt.title('RMS Gradient')
+        ax5.plot(range(len(rms_grad)), rms_grad, color='black', label='RMS gradient')
         ax5.plot(range(len(rms_grad_threshold)), rms_grad_threshold, color='blue', linestyle='dotted', label='Threshold')
         plt.legend()
 
         ax6 = plt.subplot(326)
         axes.append(ax6)
-        plt.title("RMS Step")
-        ax6.scatter(range(len(rms_step)), rms_step, color='black', label='RMS Step')
+        plt.title('RMS Step')
+        ax6.scatter(range(len(rms_step)), rms_step, color='black', label='RMS step')
         ax6.plot(range(len(rms_step_threshold)), rms_step_threshold, color='blue', linestyle='dotted', label='Threshold')
         plt.legend()
 
-        # Add grid to all axes
+        #Add grid to all axes
         for ax in axes:
             ax.grid(True)
 

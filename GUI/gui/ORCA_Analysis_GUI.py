@@ -10,14 +10,14 @@ from io import StringIO
 #Import the functions for the I/O tab
 from Python.Input_Output_operations.xyz_file_splitter import xyz_file_splitter
 from Python.Input_Output_operations.cosine_sim import cosine_sim
-from Python.Input_Output_operations.Gaussian_gjf_to_ORCA_input import Gaussian_gjf_to_ORCA_input
+from Python.Input_Output_operations.Generate_ORCA_inp import Generate_ORCA_inp
 from Python.Input_Output_operations.ORCA_out_to_ORCA_inp import ORCA_out_to_ORCA_inp
 from Python.Input_Output_operations.ORCA_out_to_ORCA_TDDFT_VG import ORCA_out_to_ORCA_TDDFT_VG
 
 #Import the functions for the output analysis Tab
 from Python.ORCA_out_analyses.ORCA_opt_plt import ORCA_opt_plt
 from Python.ORCA_out_analyses.ORCA_Thermochem_Calculator import ORCA_Thermochem_Calculator
-from Python.ORCA_out_analyses.ORCA_CCSDT import ORCA_CCSDT
+from Python.ORCA_out_analyses.ORCA_CoupledCluster import extract_ORCA_coupled_cluster
 from Python.ORCA_out_analyses.extract_IR import extract_IR_spectra
 from Python.ORCA_out_analyses.extract_ESD_spectrum_files import extract_ESD_spectrum_files
 from Python.ORCA_out_analyses.extract_ESD_spectrum_root_files import extract_ESD_spectrum_root_files
@@ -86,57 +86,57 @@ class ORCAAnalysisSuite(QMainWindow):
         #Sub-tabs for I/O operations, then add to main IO tab
 
         self.xyz_file_splitter_tab = XYZFileSplitterTab(self.output_text_edit)
-        IO_tab.addTab(self.xyz_file_splitter_tab, 'CREST .xyz Splitter')
+        IO_tab.addTab(self.xyz_file_splitter_tab, 'CREST .xyz splitter')
 
         sub_tab2 = CosineSimTab(self.output_text_edit)
-        IO_tab.addTab(sub_tab2, 'Cosine Sim of .gjf files')
+        IO_tab.addTab(sub_tab2, 'Parse .gjf files by cosine sim')
         
-        sub_tab3 = GJFtoORCAInputTab(self.output_text_edit)
-        IO_tab.addTab(sub_tab3, 'GJF to ORCA Input')
+        sub_tab3 = Generate_ORCAInputTab(self.output_text_edit)
+        IO_tab.addTab(sub_tab3, 'Generate ORCA .inp')
 
         sub_tab4 = ORCAOut_ORCAInputTab(self.output_text_edit)
-        IO_tab.addTab(sub_tab4, 'ORCA out to ORCA inp')
+        IO_tab.addTab(sub_tab4, 'ORCA .out to ORCA .inp (Opt/Freq)')
 
         sub_tab5 = ORCAOut_ORCA_TDDFT_Tab(self.output_text_edit)
-        IO_tab.addTab(sub_tab5, 'ORCA out to ORCA TD-DFT')
+        IO_tab.addTab(sub_tab5, 'ORCA .out to ORCA .inp (VGFC/TD-DFT)')
 
         main_tabs.addTab(IO_tab, 'Input/Output operations')
 
         #Sub-tabs for output analysis, then add to main output analysis tab
         sub_tab6 = ORCA_Optim_plot_Tab(self.output_text_edit)
-        output_analysis_tab.addTab(sub_tab6, 'Plot ORCA Opt Trajectory')   
+        output_analysis_tab.addTab(sub_tab6, 'Plot opt trajectory')   
 
         sub_tab7 = DFTThermochemTab(self.output_text_edit)
-        output_analysis_tab.addTab(sub_tab7, 'Thermochem Analyzer')
+        output_analysis_tab.addTab(sub_tab7, 'Calc. thermochem')
 
         sub_tab8 = CCSDTTab(self.output_text_edit)
-        output_analysis_tab.addTab(sub_tab8, 'CCSDT Analyzer')
+        output_analysis_tab.addTab(sub_tab8, 'Extract CCSD(T)')
 
         sub_tab9 = Extract_IR_SpectraTab(self.output_text_edit)
-        output_analysis_tab.addTab(sub_tab9, 'Extract Vib Spectra')
+        output_analysis_tab.addTab(sub_tab9, 'Extract/plot IR spectra')
 
         sub_tab10 = Extract_TDDFT_VG_SpectraTab(self.output_text_edit)
-        output_analysis_tab.addTab(sub_tab10, 'Extract TD-DFT Spectra (VG)')       
+        output_analysis_tab.addTab(sub_tab10, 'Extract/plot UV-Vis spectra (VG-FC)')       
 
-        main_tabs.addTab(output_analysis_tab, 'Output analysis')
+        main_tabs.addTab(output_analysis_tab, 'ORCA .out analyses')
 
         #Sub tabs for additional analyses
         sub_tab11 = BWCCS_Tab(self.output_text_edit)
-        extras_tab.addTab(sub_tab11, 'Boltzmann-weight CCSs')
+        extras_tab.addTab(sub_tab11, 'Boltzmann-weight conformer CCSs')
 
         sub_tab12 = LED_Analysis_Tab(self.output_text_edit)
-        extras_tab.addTab(sub_tab12, 'Analyze LED')
+        extras_tab.addTab(sub_tab12, 'ORCA LED analysis')
 
         sub_tab13 = NEB_Analysis_Tab(self.output_text_edit)
-        extras_tab.addTab(sub_tab13, 'Analyze NEB')             
+        extras_tab.addTab(sub_tab13, 'ORCA NEB analysis')             
         
-        main_tabs.addTab(extras_tab, 'Additional ORCA functions')
+        main_tabs.addTab(extras_tab, 'Additional analyses')
 
         #Add all the tabs to the GUI
         main_layout.addWidget(main_tabs)
 
         #Create and add a window for print statements to show up within the GUI interface
-        output_title_label = QLabel("Code printout window")
+        output_title_label = QLabel('Code printout window')
         output_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         main_layout.addWidget(output_title_label)
@@ -511,7 +511,7 @@ class CosineSimTab(QWidget):
         #If all checks pass, run the code
         cosine_sim(input_path, similarity_threshold, self.write_sim)
 
-class GJFtoORCAInputTab(QWidget):
+class Generate_ORCAInputTab(QWidget):
     def __init__(self, text_redirector, parent=None):
         super().__init__(parent)
         self.text_redirector = text_redirector
@@ -686,6 +686,7 @@ class GJFtoORCAInputTab(QWidget):
         charge = self.charge_input.value()
         multiplicity = self.multiplicity_input.value()
         calc_line = self.calc_line_input.text()
+        calc_line = calc_line.strip()
 
         #Check the state of ESP_Charges checkbox
         esp_charges_checked = self.esp_charges_checkbox.isChecked()
@@ -717,11 +718,6 @@ class GJFtoORCAInputTab(QWidget):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The directory specified does not exist. Please provide a valid directory.')
             return
 
-        #Check that the directory contains .gjf files
-        if not any(filename.lower().endswith('.gjf') for filename in os.listdir(directory)):
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No .gjf files were found in {os.path.basename(directory)} - ORCA .inp files cannot be made from .gjf files if none are present!')
-            return
-
         if not calc_line:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The entry for the method cannot be empty.')
             return
@@ -731,7 +727,7 @@ class GJFtoORCAInputTab(QWidget):
             pass
 
         #Call the Gaussian_gjf_to_ORCA_input function - extensive error handling is provided in the xyz_file_spliiter function itself
-        Gaussian_gjf_to_ORCA_input(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, self.calc_hess_checked, self.polarization_checked, self.write_xyz_checked)
+        Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, self.calc_hess_checked, self.polarization_checked, self.write_xyz_checked)
 
 class ORCAOut_ORCAInputTab(QWidget):
     def __init__(self, text_redirector, parent=None):
@@ -910,6 +906,7 @@ class ORCAOut_ORCAInputTab(QWidget):
         charge = self.charge_input.value()
         multiplicity = self.multiplicity_input.value()
         calc_line = self.calc_line_input.text()
+        calc_line = calc_line.strip()
 
         #Check the state of ESP_Charges checkbox
         esp_charges_checked = self.esp_charges_checkbox.isChecked()
@@ -945,18 +942,12 @@ class ORCAOut_ORCAInputTab(QWidget):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The directory specified does not exist. Please provide a valid directory.')
             return
 
-        #Check that the directory contains .out files
-        if not any(filename.lower().endswith('.out') for filename in os.listdir(directory)):
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No .out files were found in {os.path.basename(directory)} - ORCA .inp files cannot be made from .out files if none are present!')
-            return
-
         if not calc_line:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The entry for the method cannot be empty.')
             return
 
         if len(calc_line.split()) <= 3:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} WARNING: Your method seems rather short. Your input files will be created, but please double-check that have have requested an appropriate method using proper syntax, and that you did not forget any keywords.')
-            pass
 
         #Call the Gaussian_gjf_to_ORCA_input function if prelim checks pass - code contains extensive error handling
         ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, self.calc_hess_checked, self.polarization_checked, self.write_xyz_checked, self.write_gjf_checked)
@@ -1091,6 +1082,7 @@ class ORCAOut_ORCA_TDDFT_Tab(QWidget):
         charge = self.charge_input.value()
         multiplicity = self.multiplicity_input.value()
         calc_line = self.calc_line_input.text()
+        calc_line = calc_line.strip()
         states = self.nstates_input.value()
 
         #checkbox logic for .gjf writing
@@ -1364,7 +1356,7 @@ class CCSDTTab(QWidget):
             return
         
         else:
-            ORCA_CCSDT(input_path)
+            extract_ORCA_coupled_cluster(input_path)
 
 class Extract_IR_SpectraTab(QWidget):
     def __init__(self, text_redirector, parent=None):

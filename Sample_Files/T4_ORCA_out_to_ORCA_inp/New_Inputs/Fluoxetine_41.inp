@@ -1,10 +1,22 @@
 ! wB97X-D3 TightOpt Freq def2-TZVPP def2/J RIJCOSX TightSCF defgrid3
-%maxcore 3400
+%maxcore 3500
 
 %pal nprocs 8 
 end
 
-      0.812229
+%geom
+Calc_Hess true
+end
+
+%elprop
+Dipole true
+Quadrupole true
+Polar 1
+end
+
+*xyz 1 1
+C            -0.960091         3.589433        -0.126561
+N            -2.000238         3.086348         0.812229
 C            -3.237150         2.528717         0.161233
 C            -3.013390         1.154654        -0.452462
 C            -2.673894         0.076354         0.577841
