@@ -223,7 +223,9 @@ class ORCAAnalysisSuite(QMainWindow):
 
         '''Main Update function'''
 
-        root = os.getcwd()
+        #Safer way of getting working directory as opposed to os.getcwd() - found this out the hard way when trying to update the GUI when the parent git folder was linked to VScode's internal file explorer, where os.getcwd() defaulted to the directory specified to VScode's explorer.
+        root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+        #root = os.getcwd()
 
         #URL of the MobCal-MPI repo
         repo_url = 'https://github.com/HopkinsLaboratory/ORCA_Analysis_GUI'
@@ -236,18 +238,18 @@ class ORCAAnalysisSuite(QMainWindow):
         try:
             with open(ID_file,'r') as opf:
                 file_content = opf.read()
-
-                # Check if the file is in the correct format
-                if '\n' in file_content or '\r' in file_content or ' ' in file_content:
-                    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {ID_file} is not in the correct format. Please re-download this file from the ORCA Analysis GUI GitHub repo and re-run the GUI launcher.')
-                    return
-
-                local_SHA = file_content.strip()
-
+                file_content = file_content.strip()
+    
         except FileNotFoundError:
-            print(f'{ID_file} could not be found. Please re-download from the ORCA Analysis GUI GitHub repo and re-run the GUI launcher.')
+            print(f'{os.path.basename(ID_file)} could not be found in {os.path.dirname(ID_file)}. Please re-download from the ORCA Analysis GUI GitHub repo, and re-run the GUI launcher.')
             return
-            
+
+        # Check if the file is in the correct format
+        if '\n' in file_content or '\r' in file_content or ' ' in file_content:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {ID_file} is not in the correct format. Please re-download this file from the ORCA Analysis GUI GitHub repo and re-run the GUI launcher.')
+            return
+
+        local_SHA = file_content.strip()            
         # Remove the temporary directory if it exists and only if the local and repo SHAs match
         if repo_SHA == local_SHA: 
             temp_dir = os.path.join(root, 'temp')
