@@ -109,8 +109,8 @@ class ORCAAnalysisSuite(QMainWindow):
         sub_tab7 = DFTThermochemTab(self.output_text_edit)
         output_analysis_tab.addTab(sub_tab7, 'Calc. thermochem')
 
-        sub_tab8 = CCSDTTab(self.output_text_edit)
-        output_analysis_tab.addTab(sub_tab8, 'Extract CCSD(T)')
+        sub_tab8 = CoupledClusterTab(self.output_text_edit)
+        output_analysis_tab.addTab(sub_tab8, 'Extract coupled cluster')
 
         sub_tab9 = Extract_IR_SpectraTab(self.output_text_edit)
         output_analysis_tab.addTab(sub_tab9, 'Extract/plot IR spectra')
@@ -401,7 +401,7 @@ class CosineSimTab(QWidget):
         layout.addSpacing(10)
 
         #Run Button
-        run_button = QPushButton('Run Cosine Similarity')
+        run_button = QPushButton('Sort .gjf files by cosine similarity')
         run_button.clicked.connect(self.run_cosine_similarity)
         
         layout.addWidget(run_button)
@@ -440,17 +440,16 @@ class CosineSimTab(QWidget):
         
         #Check that the .csv is the correct format
         if os.path.isfile(input_path) and input_path.lower().endswith('csv'):
-            expected_headers = ['Filename', 'Energies', 'Relative Energy (kJ/mol)']
+            expected_headers = ['Filename', 'Energy / hartree', 'Relative Energy / kJ mol**-1']
             
             try:
                 with open(input_path, mode='r', newline='') as csvfile:
                     reader = csv.reader(csvfile)
                     headers = next(reader)
-                    print(headers)
                     
                     #Check headers
                     if headers != expected_headers:
-                        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The headers int he .csv do not match the expected format. Please extract the crest_conformers.xyz file using the CREST .xyz splitter function in this GUI, then provide the Energies.csv generated as an input here.')
+                        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The headers in the .csv do not match the expected format. Please extract the crest_conformers.xyz file using the CREST .xyz splitter function in this GUI, then provide the Energies.csv generated as an input here.')
                         return
 
                     # Initialize a variable to track the previous energy value and the number of rows in the .csv
@@ -465,8 +464,8 @@ class CosineSimTab(QWidget):
                             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} CSV headers do not match the expected format. Please extract the crest_conformers.xyz file using the CREST .xyz splitter function in this GUI, then provide the Energies.csv generated as an input here.')
                             return
 
-                        filename, energies, relative_energy = row
-                        
+                        filename, energy, relative_energy = row
+
                         #Check filename format
                         if not filename.endswith('.gjf'):
                             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} All filenames in the .csv must end with .gjf. Please extract the crest_conformers.xyz file using the CREST .xyz splitter function in this GUI, then provide the Energies.csv generated as an input here.')
@@ -474,20 +473,20 @@ class CosineSimTab(QWidget):
 
                         #Check that all energies and relative energies are floatable
                         try:
-                            float(energies)
-                            float(relative_energy)
+                            energy = float(energy)
+                            relative_energy= float(relative_energy)
+                        
                         except ValueError:
                             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Energies and/or relative energies in the .csv must all be integers. Please extract the crest_conformers.xyz file using the CREST .xyz splitter function in this GUI, then provide the Energies.csv generated as an input here.')
                             return
 
                         #Finally, check that the energies are sorted in the order of smallest to largest. If they're not, inform the user.
-
-                        if previous_energy is not None and energies < previous_energy:
+                        if previous_energy is not None and energy < previous_energy:
                             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The energies are not sorted from smallest to largest; please do this in the .csv before continuing. If you do not want to sort by energy, provide a directory containing the .gjf files as the input instead.')
                             return
 
                         #Previous energy variable with current energy in the .csv                           
-                        previous_energy = energies
+                        previous_energy = energy
                     
                     #Throw an error if the .csv only references 1 file as there is nothing to compare is against
                     if row_count < 2:
@@ -1309,7 +1308,7 @@ class DFTThermochemTab(QWidget):
         #run the code
         ORCA_Thermochem_Calculator(input_path, T, p, vib_scl, sort_by)
 
-class CCSDTTab(QWidget):
+class CoupledClusterTab(QWidget):
     def __init__(self, text_redirector, parent=None):
         super().__init__(parent)
         self.text_redirector = text_redirector
@@ -1445,12 +1444,13 @@ class Extract_IR_SpectraTab(QWidget):
         peak_options.addWidget(self.fwhm_input)
         peak_options.addSpacing(10)
 
-        #Harmonic Scaling Factor Input
+        #Harmonic Scaling Factor Input - added more decimal places for better customization
         vib_scl_label = QLabel('Scaling Factor:')
         self.vib_scl_input = QDoubleSpinBox()
-        self.vib_scl_input.setRange(0.01, 2.0) 
-        self.vib_scl_input.setSingleStep(0.01)
-        self.vib_scl_input.setValue(1.0)
+        self.vib_scl_input.setDecimals(4)
+        self.vib_scl_input.setRange(0.0001, 2.0000) 
+        self.vib_scl_input.setSingleStep(0.0005)
+        self.vib_scl_input.setValue(1.0000)
         self.vib_scl_input.setMinimumWidth(80)        
         
         peak_options.addWidget(vib_scl_label)
@@ -1825,21 +1825,21 @@ class BWCCS_Tab(QWidget):
         layout.addLayout(DFT_thermochem_layout)
         layout.addSpacing(5)
 
-        #DLPNO-CCSD(T) input - optional
-        CCSDT_layout = QHBoxLayout()  
+        #Coupled cluster input - optional
+        coupled_cluster_layout = QHBoxLayout()  
 
-        CCSDT_label = QLabel('DLPNO-CCSD(T) .csv:')
-        self.CCSDT_input = QLineEdit()
-        self.CCSDT_input.setPlaceholderText('(Optional) Directory + name of .csv file containing DLPNO-CCSD(T) energies.') 
+        coupled_cluster_label = QLabel('Coupled cluster .csv:')
+        self.coupled_cluster_input = QLineEdit()
+        self.coupled_cluster_input.setPlaceholderText('(Optional) Directory + name of .csv file containing coupled cluster energies.') 
 
-        self.browse_button_CCSDT = QPushButton('Browse')
-        self.browse_button_CCSDT.clicked.connect(self.browse_CCSDT_file)
+        self.browse_button_coupled_cluster = QPushButton('Browse')
+        self.browse_button_coupled_cluster.clicked.connect(self.browse_coupled_cluster_file)
 
-        CCSDT_layout.addWidget(CCSDT_label)
-        CCSDT_layout.addWidget(self.CCSDT_input)
-        CCSDT_layout.addWidget(self.browse_button_CCSDT)
+        coupled_cluster_layout.addWidget(coupled_cluster_label)
+        coupled_cluster_layout.addWidget(self.coupled_cluster_input)
+        coupled_cluster_layout.addWidget(self.browse_button_coupled_cluster)
 
-        layout.addLayout(CCSDT_layout)
+        layout.addLayout(coupled_cluster_layout)
         layout.addSpacing(5)        
 
         #CCS input from MobCal-MPI 2.0
@@ -1908,12 +1908,12 @@ class BWCCS_Tab(QWidget):
         if file_path:
             self.thermochem_input.setText(file_path)
     
-    def browse_CCSDT_file(self):
+    def browse_coupled_cluster_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, 'Select .csv file', '', 'CSV Files (*.csv)')
 
         #Check if a file path was selected
         if file_path:
-            self.CCSDT_input.setText(file_path)
+            self.coupled_cluster_input.setText(file_path)
 
     def browse_CCS_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, 'Select .csv file', '', 'CSV Files (*.csv)')
@@ -1926,7 +1926,7 @@ class BWCCS_Tab(QWidget):
         
         #get parameters from GUI interface and assign them to variables
         thermochem_file = self.thermochem_input.text()
-        CCSDT_file = self.CCSDT_input.text()
+        coupled_cluster_file = self.coupled_cluster_input.text()
         CCS_file = self.CCS_input.text()
         output_file = self.output_input.text()
         temp = self.temp_input.value()
@@ -1939,7 +1939,7 @@ class BWCCS_Tab(QWidget):
             return
 
         elif not thermochem_file.lower().endswith('.csv'):
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The thermochem file must be a directory path + filename that ends with .csv. This should also be the output from the Thermochem Analyzer function in this GUI.')
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The thermochem file must be a directory path + filename that ends with .csv. This should also be the output from the Calculate thermochemistry tab in this GUI.')
 
         #CCS .csv file checks
         elif not os.path.isfile(CCS_file):
@@ -1963,20 +1963,20 @@ class BWCCS_Tab(QWidget):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The temperature specified must be greater than 0.')
             return           
         
-        #Check if a DLPNO-CCSD(T) file was given. If not, assign it a value of None
-        if CCSDT_file.strip() == '':
+        #Check if a coupled cluster file was given. If not, assign it a value of None
+        if coupled_cluster_file.strip() == '':
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No DLPNO-CCSD(T) file was provided. The BW-CCS will be calculated using DFT electronic eneriges.')
-            CCSDT_file = None
+            coupled_cluster_file = None
 
-        elif not os.path.isfile(CCSDT_file):
+        elif not os.path.isfile(coupled_cluster_file):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {CCS_file} is not a valid file. Please check that the directory you have specified is correct, then try again.')
             return            
 
-        elif not CCSDT_file.lower().endswith('.csv'):
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The DLPNO-CCSD(T) file must be a directory path + filename that ends with .csv. This should also be the output from the CCSDT Analyzer function in this GUI.')
+        elif not coupled_cluster_file.lower().endswith('.csv'):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The DLPNO-CCSD(T) file must be a directory path + filename that ends with .csv. This should also be the output from the Extract coupled cluster tab in this GUI.')
             return
         
-        BW_CCS_Analysis(thermochem_file, CCSDT_file, CCS_file, output_file, temp)
+        BW_CCS_Analysis(thermochem_file, coupled_cluster_file, CCS_file, output_file, temp)
 
 class LED_Analysis_Tab(QWidget):
     def __init__(self, text_redirector, parent=None):

@@ -233,5 +233,5 @@ if __name__ == '__main__':
         app = QApplication(sys.argv)
         main_win = ORCAAnalysisSuite()
         main_win.show() #show the main window
-        main_win.check_for_update_and_prompt()  #Check for updates after showing the window    
+        #main_win.check_for_update_and_prompt()  #Check for updates after showing the window    
         sys.exit(app.exec())

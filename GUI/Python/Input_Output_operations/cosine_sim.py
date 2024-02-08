@@ -196,18 +196,15 @@ def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
             del unique_vectors[index]
 
         #Check if output directory exists, create if not
-        output_directory = os.path.join(destination, 'uniques')
-        i = 1
-        while os.path.exists(output_directory):
-            try:
-                output_directory = f'{os.path.join(destination, f"uniques_{i}")}' #Alex
-                os.makedirs(output_directory)
-                break  #Break the loop if the directory is successfully created
-            except FileExistsError:
-                i += 1
+        base_output_directory = os.path.join(destination, f'uniques_sim_{str(similarity_threshold).replace(".", "-")}')
+        output_directory = base_output_directory
 
-        if not os.path.exists(output_directory):
-            os.makedirs(output_directory)
+        i = 2
+        while os.path.exists(output_directory):
+            output_directory = f'{base_output_directory}_v{i}'
+            i += 1
+
+        os.makedirs(output_directory)
 
         #copy unique files to unqiues directory
         if directory_or_csv.lower().endswith('.csv'):
@@ -221,7 +218,7 @@ def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
             shutil.copy(os.path.join(destination, file), os.path.join(output_directory, file))
 
         if write_to_file:
-            sim_file = os.path.join(output_directory, 'similarities.csv')
+            sim_file = os.path.join(output_directory, 'pairwise_similarities.csv')
 
             #header for the .csv
             header = ['Molecule 1', 'Molecule 2', 'Cosine Similarity', 'Molecule 2 unique?']
@@ -247,8 +244,8 @@ def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
 
 #for external testing
 if __name__ == "__main__":
-    directory_or_csv = r'D:\OneDrive\OneDrive - University of Waterloo\Waterloo\MobCal-MPI\MobCal-MPI\Manual\Appendix_A\CREST_Outputs\cosine_sim_testing_3\Energies.csv'
-    similarity_threshold = 99.
+    directory_or_csv = r'C:\Users\Chris\OneDrive - University of Waterloo\Waterloo\GitHub\ORCA_Analysis_GUI\Sample_Files\T2_Cosine_sim\Energies.csv'
+    similarity_threshold = 98.5
     write_to_file = True
 
     #to run as a standalone, you need to change the location of the atom masses file

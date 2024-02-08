@@ -358,8 +358,6 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
             values = list(row)
             #print(values)
             opf.write(format_str.format(*values))
-
-    format_missing_thermochem = str('\n'.join(missing_thermochem))
     
     #Inform users via the print window of any abnormal terminations, missing thermochemistry, and imaginary frequencies
     if len(thermochem_not_requested) > 0:

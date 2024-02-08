@@ -27,11 +27,11 @@ def extract_ORCA_coupled_cluster(directory):
     header = '{}\n'.format(','.join(['{:<25}'] * len(properties)))
 
     #Create output file and write header to it, ensuring that previous files of the same name are not overwritten
-    output_csv = os.path.join(directory, 'DLPNO_CCSDT_energies.csv')
+    output_csv = os.path.join(directory, 'Coupled_cluster_energies.csv')
 
     i = 2
     while os.path.isfile(output_csv):
-        output_csv = os.path.join(directory, f'DLPNO_CCSDT_energies_v{i}.csv')
+        output_csv = os.path.join(directory, f'Coupled_cluster_energies_v{i}.csv')
         i += 1
     
     try:
