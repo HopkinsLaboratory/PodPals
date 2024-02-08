@@ -1541,7 +1541,7 @@ class Extract_TDDFT_VG_SpectraTab(QWidget):
         directory_layout.addWidget(directory_label)
         
         self.directory_input = QLineEdit()
-        self.directory_input.setPlaceholderText('Directory containing your .spectrum and/or .spectrum.rootN files.')
+        self.directory_input.setPlaceholderText('Directory containing your .spectrum.rootN and/or .spectrum files.')
         directory_layout.addWidget(self.directory_input)
         
 
