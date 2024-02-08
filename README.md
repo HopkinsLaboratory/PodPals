@@ -37,7 +37,19 @@ This GUI is currently equipped with 13 modules to streamline the analysis of fil
 
 - **6. Plot optimization trajectory**: Plots the energy change, SCF energy, max gradient, max step, RMS gradient, and RMS step as a function of the number of optimziation cycles for a single ORCA .out file containing the Opt keyword (or any other vairant that performs a geometry optimization).
 
-- **7. Calculate thermochemistry**: Take a directory containing a series of ORCA .out files and calculates thermochemical corrections and parition functions using the methods of [McQuarrie and Simon (1999)](https://gaussian.com/wp-content/uploads/dl/thermo.pdf) at user specified values of temperature and pressure. Users can also calculate thermochemistry using scaled vibrational frequencies if desired. Morever, users will be notified about the presence of imaginary frequencies and/or imcomplete Opt/Freq jobs. Finally, the code  extracts useful physicochemical properties from the output file, including rotational constants, the rotational symmetry number, X, Y, and Z components of the total dipole moment, and isotropic polarizability. 
+- **7. Calculate thermochemistry**: Take a directory containing a series of ORCA .out files and calculates thermochemical corrections and parition functions using the methods of [McQuarrie and Simon (1999)](https://gaussian.com/wp-content/uploads/dl/thermo.pdf) at user specified values of temperature and pressure. Users can also calculate thermochemistry using scaled vibrational frequencies if desired. Morever, users will be notified about the presence of imaginary frequencies and/or imcomplete Opt/Freq jobs. Outputs for this module include the following:
+    - Filename
+    - Number of imaginary freqs
+    - Electronic energy
+    - Thermal energy
+    - Total enthalpy (H)
+    - Total entropy (T * S)
+    - Gibbs energy (G) 
+    - A, B, and C rotational constants
+    - Rotational symmetry number
+    - X, Y, and Z dipole components, as well as the total dipole moment
+    - Isotropic polarizability
+    - Translational, rotational, vibrational, and electronic partition functions 
 
 - **8. Extract CCSD(T)**: Take a directory containing a series of ORCA .out files and extracts the CCSD(T)
 
