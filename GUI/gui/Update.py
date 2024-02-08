@@ -37,7 +37,7 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function):
 
     update_files = {
         #str(os.path.join(top_dir, 'Sample_Files')): str(os.path.join(temp_dir, 'Sample_Files')), #Sample files to accompany to GUI
-        str(os.path.join(top_dir, 'Documentation.docx')): str(os.path.join(temp_dir, 'Documentation.docx')), #GUI documentation
+        #str(os.path.join(top_dir, 'Documentation.docx')): str(os.path.join(temp_dir, 'Documentation.docx')), #GUI documentation
         str(os.path.join(root, 'Launcher.py')): str(os.path.join(temp_dir, 'GUI', 'Launcher.py')), #GUI launcher
         str(os.path.join(root, 'gui', 'Update.py')): str(os.path.join(temp_dir, 'GUI', 'gui', 'Update.py')), #Update function
         str(os.path.join(root, 'gui', 'ORCA_Analysis_GUI.py')): str(os.path.join(temp_dir, 'GUI', 'gui', 'ORCA_Analysis_GUI.py')), #GUI layout file
