@@ -33,7 +33,7 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function, ens
 
     # A handy dictionary to hold the paths of the files to be updated for subsequent looping. Syntax is as follows- Path to local file : Path to cloned GitHub file
     if ensure_update:
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Updating files...')
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Ensuring that the local version of gui\Update.py is up to date...')
         QApplication.processEvents()
         
         #create a location to write a python script to update Update.py to the most recent version
@@ -43,6 +43,9 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function, ens
         update_files = {str(os.path.join(root, 'gui', 'Update.py')): str(os.path.join(temp_dir, 'GUI', 'gui', 'Update.py'))} #Update function
     
     else:
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Updating all .py modules to their most recent version...')
+        QApplication.processEvents()
+
         #create a location to write a python script to update Update.py to the most recent version
         update_script_path = os.path.join(temp_dir, 'Allfiles_update.py')
 
