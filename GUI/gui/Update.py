@@ -5,14 +5,15 @@ from PyQt6.QtWidgets import QApplication
 def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function, ensure_update):
     '''Updates the .py files associated with the MobCal-MPI GUI. Inputs are the repo URL,  the directory where the GUI .py launcher is located, and a .txt file containing the SHA value of the user's local clone of the GUI.'''
 
-    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Cloning {repo_url} ...')
-    QApplication.processEvents()
-
     # Define the repository URL
     temp_dir = os.path.join(root, 'temp')
+    top_dir = os.path.dirname(root)
 
     #only clone the repo once when updating the Update.py file
     if ensure_update:
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Cloning {repo_url} ...')
+        QApplication.processEvents()
+
         # Remove the temporary directory if it exists
         if os.path.isdir(temp_dir):
             delete_dir_function(temp_dir)
@@ -29,8 +30,6 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function, ens
             print('Please feel free to use the local version of the GUI and update once your internet connection is retored.')
             QApplication.processEvents()
             return
-
-    top_dir = os.path.dirname(root)
 
     # A handy dictionary to hold the paths of the files to be updated for subsequent looping. Syntax is as follows- Path to local file : Path to cloned GitHub file
     if ensure_update:

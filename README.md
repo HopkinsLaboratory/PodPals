@@ -17,7 +17,7 @@ Ensure the following software is installed on your system:
 Install the necessary Python modules using `pip` in your command prompt:
 
 ```console
-pip install numpy scipy matplotlib git lxml PyQt6 pyarrow pandas openpyxl csv natsort
+pip install importlib numpy scipy matplotlib git lxml PyQt6 pyarrow pandas openpyxl csv natsort
 ```
 
 ## GUI Functionality
