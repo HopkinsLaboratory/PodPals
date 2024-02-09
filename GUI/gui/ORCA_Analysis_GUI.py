@@ -28,8 +28,7 @@ from Python.Special_Analyses.BW_CCS_Analyzer import BW_CCS_Analysis
 #from Python.Special_Analyses.NEB_Analyzer import NEB_Analyzer
 
 #Import the update function on your local machine, and update it to the most recent version from GitHub
-import gui.Update
-from gui.Update import Update_GUI_files
+import gui.Update as update_module
 from importlib import reload
 
 class TextRedirect(StringIO):
@@ -271,6 +270,9 @@ class ORCAAnalysisSuite(QMainWindow):
             if choice == QMessageBox.StandardButton.Yes:
                 print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The ORCA Analysis GUI is being updated. Any errors encountered during the update process will be printed below.')
                 
+                #Ensure that the update function is globally accessible
+                Update_GUI_files = update_module.Update_GUI_files
+
                 #Run the update function to get the most recent version of Update.py
                 ensure_update = True
 
@@ -279,7 +281,8 @@ class ORCAAnalysisSuite(QMainWindow):
                     ensure_update = False
                 
                 #After Update.py is updated to its most recent version, reload it and reimport the Update function
-                reload(gui.Update)
+                reload(update_module)
+                Update_GUI_files = update_module.Update_GUI_files
                 from gui.Update import Update_GUI_files
 
                 #update the rest of the ORCA GUI .py modules to their most recent version using calls from the now up-to-date Update.py file
