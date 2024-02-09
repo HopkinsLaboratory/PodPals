@@ -11,22 +11,24 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function, ens
     # Define the repository URL
     temp_dir = os.path.join(root, 'temp')
 
-    # Remove the temporary directory if it exists
-    if os.path.isdir(temp_dir):
-        delete_dir_function(temp_dir)
-    
-    # Clone the GitHub repository to the temporary directory
-    try: 
-        repo = git.Repo.clone_from(repo_url, temp_dir, branch='master')
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Cloning complete.')
-        QApplication.processEvents()
-    
-    except Exception as e: 
-        print(f'An exception occured when attempting to clone the ORCA Analysis GUI repo: {e}')
-        print('This block is most commonly entered due to lack of an internet connection, although the error message above may indicate otherwise... Use your best judgement :)')
-        print('Please feel free to use the local version of the GUI and update once your internet connection is retored.')
-        QApplication.processEvents()
-        return
+    #only clone the repo once when updating the Update.py file
+    if ensure_update:
+        # Remove the temporary directory if it exists
+        if os.path.isdir(temp_dir):
+            delete_dir_function(temp_dir)
+        
+        # Clone the GitHub repository to the temporary directory
+        try: 
+            repo = git.Repo.clone_from(repo_url, temp_dir, branch='master')
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Cloning complete.')
+            QApplication.processEvents()
+        
+        except Exception as e: 
+            print(f'An exception occured when attempting to clone the ORCA Analysis GUI repo: {e}')
+            print('This block is most commonly entered due to lack of an internet connection, although the error message above may indicate otherwise... Use your best judgement :)')
+            print('Please feel free to use the local version of the GUI and update once your internet connection is retored.')
+            QApplication.processEvents()
+            return
 
     top_dir = os.path.dirname(root)
 
