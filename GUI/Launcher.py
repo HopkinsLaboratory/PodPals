@@ -162,8 +162,8 @@ if __name__ == '__main__':
     #Check that github desktop is installed
     check_git()
 
-    #check that all required python modules are installed
-    required_packages = ['numpy', 'scipy', 'matplotlib', 'git', 'lxml', 'PyQt6', 'pandas', 'openpyxl', 'csv', 'natsort']
+    #check that all required python modules are installed - added pyarrow to the list as the next iteration of pandas requires PyArrow
+    required_packages = ['numpy', 'scipy', 'matplotlib', 'git', 'lxml', 'PyQt6', 'pyarrow', 'pandas', 'openpyxl', 'csv', 'natsort']
     check_python_packages(required_packages)
 
 #Now that all the required packages are installed, we can import the modules/functions used by the GUI
