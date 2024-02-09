@@ -269,8 +269,13 @@ class ORCAAnalysisSuite(QMainWindow):
             if choice == QMessageBox.StandardButton.Yes:
                 print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The ORCA Analysis GUI is being updated. Any errors encountered during the update process will be printed below.')
                 
-                #Run the update function
-                Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir)
+                #Run the update function to get the most recent version of Update.py
+                ensure_update = True
+                Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir, ensure_update)
+
+                #Run the update function to get the rest of the files
+                ensure_update = False
+                Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir, ensure_update)                
 
                 print(f' {datetime.now().strftime("[ %H:%M:%S ]")} The ORCA Analysis GUI files have been succesfully updated to their current version. Please close and reload the GUI.')
                 return

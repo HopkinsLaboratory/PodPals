@@ -22,8 +22,10 @@ def find_github_desktop():
                 git_exe = Path(path) / 'git.exe'
                 if git_exe.exists():
                     return str(git_exe.parent)
+        
         except FileNotFoundError:
             pass
+        
         except OSError:
             pass
 
