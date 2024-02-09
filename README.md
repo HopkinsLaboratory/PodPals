@@ -26,7 +26,8 @@ The GUI features 13 modules designed to facilitate the analysis of ORCA output f
 ### Input to Output operations
 
 #### 1. CREST .xyz Splitter:
-This module extracts conformers and their energies identified by the [Conformer–Rotamer Ensemble Sampling Tool (CREST)](https://crest-lab.github.io/crest-docs/), an exceptionally efficient program for mapping low-energy conformations of any analyte. *XYZ* coordinates of each conformer is stored in the `crest_conformers.xyz` file, generated upon completion of a CREST run, are extracted to individual .gjf file (Gaussian Input format). Extracting of conformers to alternative file types will be added in future updates. 
+This module extracts conformers and their energies identified by the [Conformer–Rotamer Ensemble Sampling Tool (CREST)](https://crest-lab.github.io/crest-docs/), an exceptionally efficient program for mapping low-energy conformations of any analyte. *XYZ* coordinates of each conformer are stored in the `crest_conformers.xyz` file, which is generated upon completion of a CREST run. The `CREST .xyz splitter` module extracts each conformer to individual .gjf files (Gaussian Input format). Extracting of conformers to alternative file types will be added in future updates. 
+
 - **Inputs:**
     - .xyz file: Specify the path and filename of `crest_conformers.xyz`. 
     - Output basename: Define the basename for exported conformer files. Each file will be suffixed with _N, where N is an integer, to ensure unique identification.
