@@ -87,49 +87,49 @@ class ORCAAnalysisSuite(QMainWindow):
         #Sub-tabs for I/O operations, then add to main IO tab
 
         self.xyz_file_splitter_tab = XYZFileSplitterTab(self.output_text_edit)
-        IO_tab.addTab(self.xyz_file_splitter_tab, 'CREST .xyz splitter')
+        IO_tab.addTab(self.xyz_file_splitter_tab, 'T1: CREST .xyz splitter')
 
         sub_tab2 = CosineSimTab(self.output_text_edit)
-        IO_tab.addTab(sub_tab2, 'Parse .gjf files by cosine sim')
+        IO_tab.addTab(sub_tab2, 'T2: Cosine sim sorting')
         
         sub_tab3 = Generate_ORCAInputTab(self.output_text_edit)
-        IO_tab.addTab(sub_tab3, 'Generate ORCA .inp')
+        IO_tab.addTab(sub_tab3, 'T3: Generate ORCA .inp')
 
         sub_tab4 = ORCAOut_ORCAInputTab(self.output_text_edit)
-        IO_tab.addTab(sub_tab4, 'ORCA .out to ORCA .inp (Opt/Freq)')
+        IO_tab.addTab(sub_tab4, 'T4: ORCA .out to ORCA .inp (Opt/Freq)')
 
         sub_tab5 = ORCAOut_ORCA_TDDFT_Tab(self.output_text_edit)
-        IO_tab.addTab(sub_tab5, 'ORCA .out to ORCA .inp (VGFC/TD-DFT)')
+        IO_tab.addTab(sub_tab5, 'T5: ORCA .out to ORCA .inp (VGFC/TD-DFT)')
 
         main_tabs.addTab(IO_tab, 'Input/Output operations')
 
         #Sub-tabs for output analysis, then add to main output analysis tab
         sub_tab6 = ORCA_Optim_plot_Tab(self.output_text_edit)
-        output_analysis_tab.addTab(sub_tab6, 'Plot opt trajectory')   
+        output_analysis_tab.addTab(sub_tab6, 'T6: Plot opt trajectory')   
 
         sub_tab7 = DFTThermochemTab(self.output_text_edit)
-        output_analysis_tab.addTab(sub_tab7, 'Calc. thermochem')
+        output_analysis_tab.addTab(sub_tab7, 'T7: Calc. thermochem')
 
         sub_tab8 = CoupledClusterTab(self.output_text_edit)
-        output_analysis_tab.addTab(sub_tab8, 'Extract coupled cluster')
+        output_analysis_tab.addTab(sub_tab8, 'T8: Extract coupled cluster')
 
         sub_tab9 = Extract_IR_SpectraTab(self.output_text_edit)
-        output_analysis_tab.addTab(sub_tab9, 'Extract/plot IR spectra')
+        output_analysis_tab.addTab(sub_tab9, 'T9: Extract/plot IR spectra')
 
         sub_tab10 = Extract_TDDFT_VG_SpectraTab(self.output_text_edit)
-        output_analysis_tab.addTab(sub_tab10, 'Extract/plot UV-Vis spectra (VG-FC)')       
+        output_analysis_tab.addTab(sub_tab10, 'T10: Extract/plot UV-Vis spectra (VG-FC)')       
 
         main_tabs.addTab(output_analysis_tab, 'ORCA .out analyses')
 
         #Sub tabs for additional analyses
         sub_tab11 = BWCCS_Tab(self.output_text_edit)
-        extras_tab.addTab(sub_tab11, 'Boltzmann-weight conformer CCSs')
+        extras_tab.addTab(sub_tab11, 'T11: Boltzmann-weight conformer CCSs')
 
         sub_tab12 = LED_Analysis_Tab(self.output_text_edit)
-        extras_tab.addTab(sub_tab12, 'ORCA LED analysis')
+        extras_tab.addTab(sub_tab12, 'T12: ORCA LED analysis')
 
         sub_tab13 = NEB_Analysis_Tab(self.output_text_edit)
-        extras_tab.addTab(sub_tab13, 'ORCA NEB analysis')             
+        extras_tab.addTab(sub_tab13, 'T13: ORCA NEB analysis')             
         
         main_tabs.addTab(extras_tab, 'Additional analyses')
 
@@ -137,7 +137,7 @@ class ORCAAnalysisSuite(QMainWindow):
         main_layout.addWidget(main_tabs)
 
         #Create and add a window for print statements to show up within the GUI interface
-        output_title_label = QLabel('Code printout window')
+        output_title_label = QLabel('Status window')
         output_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         main_layout.addWidget(output_title_label)
@@ -166,15 +166,15 @@ class ORCAAnalysisSuite(QMainWindow):
         def get_latest_commit_sha(repo_url, branch='HEAD'):
             '''Grabs the SHA value associated with the latest commit to a GitHub repo. Function takes a URL as input.''' 
             try:
-                # Run the git ls-remote command
+                #Run the git ls-remote command
                 result = subprocess.run(['git', 'ls-remote', repo_url, branch], capture_output=True, text=True)
 
-                # Check if the command was successful
+                #Check if the command was successful
                 if result.returncode != 0:
                     print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error when obtaining the latest SHA value from the ORCA Analysis GUI GitHub repo (likely due to lack of an internet connection): {result.stderr}')
                     return
 
-                # Parse the output to get the SHA
+                #Parse the output to get the SHA
                 output = result.stdout.split()
                 return output[0] if output else None
             
@@ -219,7 +219,7 @@ class ORCAAnalysisSuite(QMainWindow):
 
             except Exception as e: 
                 print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An unexpected error encountered trying to remove {directory}: {e}.\n Please report this error and your workflow / system specs to the Issues section on Github. You can delete still delete GUI/temp manually.')         
-                # Get the current working directory and define the temporary directory path
+                #Get the current working directory and define the temporary directory path
                 pass
 
         '''Main Update function'''
@@ -234,7 +234,7 @@ class ORCAAnalysisSuite(QMainWindow):
         #get SHA value of repo-ID
         repo_SHA = get_latest_commit_sha(repo_url)
 
-        # File to store the local version's SHA value
+        #File to store the local version's SHA value
         ID_file = os.path.join(root, 'ID.txt') 
         try:
             with open(ID_file,'r') as opf:
@@ -245,13 +245,13 @@ class ORCAAnalysisSuite(QMainWindow):
             print(f'{os.path.basename(ID_file)} could not be found in {os.path.dirname(ID_file)}. Please re-download from the ORCA Analysis GUI GitHub repo, and re-run the GUI launcher.')
             return
 
-        # Check if the file is in the correct format
+        #Check if the file is in the correct format
         if '\n' in file_content or '\r' in file_content or ' ' in file_content:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {ID_file} is not in the correct format. Please re-download this file from the ORCA Analysis GUI GitHub repo and re-run the GUI launcher.')
             return
 
         local_SHA = file_content.strip()            
-        # Remove the temporary directory if it exists and only if the local and repo SHAs match
+        #Remove the temporary directory if it exists and only if the local and repo SHAs match
         if repo_SHA == local_SHA: 
             temp_dir = os.path.join(root, 'temp')
             if os.path.isdir(temp_dir):
@@ -261,6 +261,8 @@ class ORCAAnalysisSuite(QMainWindow):
                     print(f'{datetime.now().strftime("[ %H:%M:%S ]")} There was a problem deleting the /temp folder that was made from the previous update procedure: {e}.')
                     print('Please delete this manually. You can continue to use the GUI whether the /temp folder is deleted or not.')
                     pass
+            
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The ORCA Analysis GUI is up to date! Please report any unhandled/unclear errors to the issues section of the GitHub repository.')
 
         else:
             choice_title = 'Update available!'
@@ -333,8 +335,24 @@ class XYZFileSplitterTab(QWidget):
         basename_layout.addWidget(self.basename_input)
 
         layout.addLayout(basename_layout)
+        layout.addSpacing(5)
+
+        #Selection box for DFT/CCSDT/Custom methods
+        export_layout = QHBoxLayout()
+        export_label = QLabel('Export file type:')
+        self.export_combobox = QComboBox()
+        self.export_combobox.addItems(['.gjf', '.xyz', '.inp'])
+        self.export_combobox.setCurrentIndex(0)
+        self.export_combobox.setMinimumWidth(70)
+
+        export_layout.addWidget(export_label)
+        export_layout.addSpacing(16)
+        export_layout.addWidget(self.export_combobox)
+        export_layout.addStretch(1)
+
+        layout.addLayout(export_layout)
         layout.addSpacing(10)
-        
+
         #Run Button
         run_button = QPushButton('Run')
         layout.addWidget(run_button)
@@ -357,9 +375,10 @@ class XYZFileSplitterTab(QWidget):
         
         file_path = self.file_path_input.text()
         basename = self.basename_input.text()
+        export_type = self.export_combobox.currentText().replace('.', '')
 
         #Run the code - extensive error handling is provided in the xyz_file_spliiter function itself
-        xyz_file_splitter(file_path, basename)
+        xyz_file_splitter(file_path, basename, export_type)
 
 class CosineSimTab(QWidget):
     def __init__(self, text_redirector, parent=None):
@@ -397,10 +416,11 @@ class CosineSimTab(QWidget):
         sim_layout = QHBoxLayout()
 
         #add the input for defining the similiarity threshold
-        self.sim_label = QLabel('Similiarity threshold (%):')
+        self.sim_label = QLabel('Cosine similiarity threshold (*100):')
         self.sim_input = QDoubleSpinBox()
         self.sim_input.setValue(97.0)
-        self.sim_input.setMaximum(100.0)  
+        self.sim_input.setMaximum(99.99)
+        self.sim_input.setMinimum(0.00)   
         self.sim_input.setMinimumWidth(70)
         
         sim_layout.addWidget(self.sim_label)
@@ -417,7 +437,7 @@ class CosineSimTab(QWidget):
         layout.addSpacing(10)
 
         #Run Button
-        run_button = QPushButton('Sort .gjf files by cosine similarity')
+        run_button = QPushButton('Sort files by cosine similarity')
         run_button.clicked.connect(self.run_cosine_similarity)
         
         layout.addWidget(run_button)
@@ -468,7 +488,7 @@ class CosineSimTab(QWidget):
                         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The headers in the .csv do not match the expected format. Please extract the crest_conformers.xyz file using the CREST .xyz splitter function in this GUI, then provide the Energies.csv generated as an input here.')
                         return
 
-                    # Initialize a variable to track the previous energy value and the number of rows in the .csv
+                    #Initialize a variable to track the previous energy value and the number of rows in the .csv
                     row_count = 0
                     previous_energy = None
 
@@ -483,8 +503,8 @@ class CosineSimTab(QWidget):
                         filename, energy, relative_energy = row
 
                         #Check filename format
-                        if not filename.endswith('.gjf'):
-                            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} All filenames in the .csv must end with .gjf. Please extract the crest_conformers.xyz file using the CREST .xyz splitter function in this GUI, then provide the Energies.csv generated as an input here.')
+                        if not filename.lower().endswith('.gjf') or not filename.lower().endswith('.inp') or not filename.lower().endswith('.xyz'):
+                            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} All filenames in the .csv must end with either .gjf, .xyz, or .inp. Please extract the crest_conformers.xyz file using the CREST .xyz splitter function in this GUI, then provide the Energies.csv generated as an input here.')
                             return
 
                         #Check that all energies and relative energies are floatable
@@ -514,16 +534,22 @@ class CosineSimTab(QWidget):
                 return
 
         #If a directory is provided, ensure that the directory contains at least two .gjf files
-        if os.path.isdir(input_path):
-            gjf_files = [x for x in os.listdir(input_path) if x.lower().endswith('.gjf')]
+        
+        elif os.path.isdir(input_path):
+            extensions = ('.gjf', '.xyz', '.inp') #valid file extensions for doing cosine sim - will be updated in the future. tuples required for .endswith() methodology
+            files = [x for x in os.listdir(input_path) if x.lower().endswith(extensions) and os.path.isfile(os.path.join(input_path, x))]
 
-            if len(gjf_files) == 0:
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The specified directory does not contain any gjf files!')
+            if len(files) == 0:
+                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The specified directory does not contain any .gjf, .xyz, or .inp files!')
                 return
 
-            elif len(gjf_files) == 1:
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The specified directory only contains one gjf file; there is nothing to compare it against!')
+            elif len(files) == 1:
+                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The specified directory only contains one .gjf, .xyz, and/or .inp file; there is nothing to compare it against!')
                 return
+        
+        else:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The input path does not point to a valid directory or .csv file.')
+            return            
         
         #If all checks pass, run the code
         cosine_sim(input_path, similarity_threshold, self.write_sim)
@@ -741,7 +767,6 @@ class Generate_ORCAInputTab(QWidget):
 
         if len(calc_line.split()) <= 3:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} WARNING: Your method seems rather short. Your input files will be created, but please double-check that have have requested an appropriate method using proper syntax, and that you did not forget any keywords.')
-            pass
 
         #Call the Gaussian_gjf_to_ORCA_input function - extensive error handling is provided in the xyz_file_spliiter function itself
         Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, self.calc_hess_checked, self.polarization_checked, self.write_xyz_checked)
@@ -1052,7 +1077,7 @@ class ORCAOut_ORCA_TDDFT_Tab(QWidget):
 
         #number of states
         states_layout = QHBoxLayout()
-        n_states_label = QLabel('# states:')
+        n_states_label = QLabel('#states:')
         self.nstates_input = QSpinBox()
         self.nstates_input.setValue(10)
         self.nstates_input.setMinimumWidth(50)
@@ -2121,8 +2146,4 @@ class NEB_Analysis_Tab(QWidget):
         layout.addWidget(message)
         layout.addStretch(1)
 
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    main_win = ORCAAnalysisSuite()
-    main_win.show()
-    sys.exit(app.exec())
+

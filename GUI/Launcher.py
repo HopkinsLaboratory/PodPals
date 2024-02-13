@@ -2,7 +2,7 @@
 import importlib, platform, os, sys, shutil, subprocess
 from pathlib import Path
 
-# Before the GUI launches, check that the user has the required packages to run the MobCal-MPI GUI
+#Before the GUI launches, check that the user has the required packages to run the MobCal-MPI GUI
 #The most troublesome package is Git, which also requires GitHub desktop to be on the user's machine. First, we check if it is installed.
 
 def find_github_desktop():
@@ -13,7 +13,7 @@ def find_github_desktop():
     #Check process for Windows users
     if os_type == 'Windows':
         
-        # First, try to find the path in the registry
+        #First, try to find the path in the registry
         try:
             #Irrespective of install location of Git desktop, there should always be a registry key here for windows users
             import winreg
@@ -35,24 +35,24 @@ def find_github_desktop():
             Path(os.environ.get('PROGRAMFILES', '')) / 'GitHub Desktop',
             Path(os.environ.get('PROGRAMFILES(X86)', '')) / 'GitHub Desktop',
             Path(os.environ.get('USERPROFILE', '')) / 'AppData' / 'Local' / 'GitHubDesktop'
-            # Users can add more Windows-specific paths here if they installed GitHub Desktop to a non-default location.
+            #Users can add more Windows-specific paths here if they installed GitHub Desktop to a non-default location.
         ])
 
-    # Check process for Mac users (I don't have a MAc so I have not been able to check if this works; I'm going off of stack exchange here)
+    #Check process for Mac users (I don't have a MAc so I have not been able to check if this works; I'm going off of stack exchange here)
     elif os_type == 'Darwin':
         paths_to_check.extend([
             Path('/Applications/GitHub Desktop.app'),
             Path.home() / 'Applications' / 'GitHub Desktop.app'
         ])
-        # Users can add more Mac-specific paths here if they installed GitHub Desktop to a non-default location.
+        #Users can add more Mac-specific paths here if they installed GitHub Desktop to a non-default location.
 
-    # Check process for Linux users (I don't have have a Linux machine so I have not been able to check if this works; I'm going off of stack exchange here)
+    #Check process for Linux users (I don't have have a Linux machine so I have not been able to check if this works; I'm going off of stack exchange here)
     elif os_type == 'Linux':
         paths_to_check.extend([
             Path('/usr/bin/github-desktop'),
             Path('/usr/local/bin/github-desktop')
         ])
-        # Users can add more Mac-specific paths here if they installed GitHub Desktop to a non-default location.
+        #Users can add more Mac-specific paths here if they installed GitHub Desktop to a non-default location.
     
     for path in paths_to_check:
         if (os_type == 'Windows' and path.is_dir()) or (os_type in ['Darwin', 'Linux'] and path.exists()):
@@ -64,10 +64,10 @@ def find_git_executable():
     os_type = platform.system()
     
     if os_type == 'Windows':
-        # Try to find the Git path in the registry
+        #Try to find the Git path in the registry
         try:
             import winreg
-            # Check both HKEY_LOCAL_MACHINE and HKEY_CURRENT_USER
+            #Check both HKEY_LOCAL_MACHINE and HKEY_CURRENT_USER
             for hkey in [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]:
                 with winreg.OpenKey(hkey, r'Software\GitForWindows') as key:
                     path, _ = winreg.QueryValueEx(key, 'InstallPath')
@@ -79,39 +79,39 @@ def find_git_executable():
         except OSError:
             pass
 
-    # For macOS and Linux, as well as a failsafe for Windows
+    #For macOS and Linux, as well as a failsafe for Windows
     git_path = shutil.which('git')
     if git_path is not None:
         return git_path
 
-    # Common paths to check for Git on Unix-like systems
+    #Common paths to check for Git on Unix-like systems
     unix_paths = [
-        '/usr/local/bin/git',  # Common for macOS and some Linux distros
-        '/opt/local/bin/git',  # Common for installations via MacPorts
-        '/usr/bin/git',        # Common for Linux distros
-        '/bin/git',            # Less common, but worth checking
-        # more can be added as needed
+        '/usr/local/bin/git',  #Common for macOS and some Linux distros
+        '/opt/local/bin/git',  #Common for installations via MacPorts
+        '/usr/bin/git',        #Common for Linux distros
+        '/bin/git',            #Less common, but worth checking
+        #more can be added as needed
     ]
 
     for path in unix_paths:
         if Path(path).is_file():
             return path
 
-    # If Git executable not found, idk you probably didn't install it
+    #If Git executable not found, idk you probably didn't install it
     return None
     
 def add_to_path(new_path):
     '''Takes a path as input and adds it to the system's PATH environment variable if it isn't already there'''
     os_type = platform.system()
 
-    # Windows uses semicolons (;) as path separator
+    #Windows uses semicolons (;) as path separator
     if os_type == 'Windows':
         path_separator = ';'
     else:
-        # Both macOS (Darwin) and Linux use colons (:) as path separator
+        #Both macOS (Darwin) and Linux use colons (:) as path separator
         path_separator = ':'
 
-    # Check if new_path is already in PATH
+    #Check if new_path is already in PATH
     if new_path not in os.environ['PATH'].split(path_separator):
         os.environ['PATH'] = new_path + path_separator + os.environ['PATH']
 
@@ -165,10 +165,8 @@ if __name__ == '__main__':
     check_git()
 
     #check that all required python modules are installed - added pyarrow to the list as the next iteration of pandas requires PyArrow
-    required_packages = ['importlib', 'numpy', 'scipy', 'matplotlib', 'git', 'lxml', 'PyQt6', 'pyarrow', 'pandas', 'openpyxl', 'csv', 'natsort']
+    required_packages = ['importlib', 'numpy', 'scipy', 'matplotlib', 'git', 'PyQt6', 'pyarrow', 'pandas', 'openpyxl', 'csv', 'natsort']
     check_python_packages(required_packages)
-
-#Now that all the required packages are installed, we can import the modules/functions used by the GUI
 
 def check_dependencies():
     #Setup a dictionary showing of the module dependencies of required modules and their functions, organized by functionality
@@ -197,6 +195,10 @@ def check_dependencies():
             'Python.atom_mass.atom_masses',
             'Python.constants_and_conversions.c',
             'Python.constants_and_conversions.convert_energy',
+        ],
+        'GUI_utilities': [
+            'gui.ORCA_Analysis_GUI.ORCAAnalysisSuite',
+            'gui.Update.Update_GUI_files',
         ]
     }
 
@@ -211,13 +213,15 @@ def check_dependencies():
                 getattr(module, function_name) #test import
             
             except ImportError as e:
-                missing_dependencies.append(func)
+                missing_dependencies.append([category, func])
             
             except AttributeError as e:
-                missing_dependencies.append(func)
+                missing_dependencies.append([category, func])
 
     if missing_dependencies:
-        print('The following Python modules are missing. Please reclone the repo from Github and try again, ensuring the missing Python modules are present:\n', ",\n".join(missing_dependencies))
+        cwd = os.path.dirname(os.path.realpath(__file__))
+        formatted_dependencies = ",\n".join([f'{category}: {os.path.join(cwd, (func.split(".")[0]))}' for category, func in missing_dependencies])
+        print('The following Python modules are missing. Please reclone the repo from Github and try again, ensuring the missing Python modules are available in the following locations:\n', formatted_dependencies)
         return False
     
     else:

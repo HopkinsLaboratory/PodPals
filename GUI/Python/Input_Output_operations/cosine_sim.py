@@ -16,27 +16,22 @@ def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
     - write_to_file: Boolean flag to indicate whether to write results to a file.
     '''
 
-    def read_gjf(file_path):
-        '''Read the xyz data of a .gjf file and write the data to a list.'''
+    def read_file(file_path):
+        '''Read the xyz data of a .gjf, .xyz, or .inp file and write the data to a list.'''
         
         #empty list to write coordinate data to
         coordinates = []
 
         with open(file_path, 'r') as file:
-            content = file.readlines()
+            lines = file.readlines()
 
-        #Find the index of the line containing two integers separated by a space
-        cutoff_index = next((i for i, line in enumerate(content) if len(line.split()) == 2), None)
-
-        #If cutoff line is found, return content starting from the next line
-        if cutoff_index is not None:
-            xyz_data = content[cutoff_index + 1:]
-        
-            for line in xyz_data:
-                line = line.split()
-                
-                if len(line) == 4: #only lines containing the atom type and x, y, and z coordinates will have a length of 4
-                    coordinates.append(line)
+        for line in lines:
+            line = line.strip()
+            split_line = line.split() #split by whitespace
+            
+            #the only entry with 4 splits, where instance 1 is an atom symbol (sometimes an atom number!), and a period in instances 1-3 will be the xyz coordiante lines. Write these to the geom list
+            if len(split_line) == 4 and (split_line[0].isalpha() or split_line[0].isdigit()) and all('.' in x for x in split_line[1:3]):
+                coordinates.append(line.split())
                 
             return coordinates
         
@@ -118,7 +113,7 @@ def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
 
         else:
             destination = directory_or_csv
-            file_list = natsorted([file for file in os.listdir(directory_or_csv) if file.lower().endswith('.gjf')]) #sort file list in natural order, not funky python string comprehension way
+            file_list = natsorted([file for file in os.listdir(directory_or_csv) if file.lower().endswith('.gjf') or file.lower().endswith('.inp') or file.lower().endswith('.xyz')]) #sort file list in natural order, not funky python string comprehension way
 
         #empty list to write distance vectors to
         vectors = []
@@ -133,7 +128,7 @@ def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
         for file_name in file_list:
 
             file_path = os.path.join(destination, file_name)
-            coordinates = read_gjf(file_path)
+            coordinates = read_file(file_path)
             #Check the number of atoms in the current molecule
             current_num_atoms = len(coordinates)
             
