@@ -54,19 +54,13 @@ This module processes multiple .gjf, .inp, and/or .xyz files to identify unique 
     - Adjust the `Cosine similarity threshold (*100):` field to set your desired threshold for similarity comparisons. Thresholds can be defined anywhere between 0.00 to 99.99.
     - The similiarity between two geometries is defined by the cosine of the angle between the two vectors $(\vec{V}_a, \vec{V}_b)$, where each vector is a 1D-array of the mass-weighted distance ($d_{CoM}$) of each atom *i* from the molecule's centre of mass ($CoM$):
 
-    $$
-    x_{CoM} = \frac{\sum_{i} x_i m_{i}}{\sum_{i} m_{i}}, \quad y_{CoM} = \frac{\sum_{i} y_i m_{i}}{\sum_{i} m_{i}}, \quad z_{CoM} = \frac{\sum_{i} z_i m_{i}}{\sum_{i} m_{i}}
-    $$
+    $$x_{CoM} = \frac{\sum_{i} x_i m_{i}}{\sum_{i} m_{i}}, \quad y_{CoM} = \frac{\sum_{i} y_i m_{i}}{\sum_{i} m_{i}}, \quad z_{CoM} = \frac{\sum_{i} z_i m_{i}}{\sum_{i} m_{i}}$$
 
-    $$
-    d_{CoM} = m_{i} \cdot \sqrt{(x_{i} - x_{CoM})^2 + (y_{i} - y_{CoM})^2 + (z_{i} - z_{CoM})^2}
-    $$
+    $$d_{CoM} = m_{i} \cdot \sqrt{(x_{i} - x_{CoM})^2 + (y_{i} - y_{CoM})^2 + (z_{i} - z_{CoM})^2}$$
 
     - The 1D array is sorted from smallest to largest so that variations in atom ordering from the input file and rotational equivalences (e.g., the C2 symmetry of the phenyl moiety) do not result in unique geometries. The cosine similarity between $(\vec{V}_a, \vec{V}_b)$ is then evaluated by:
 
-    $$
-    \text{sim}(\vec{V}_a, \vec{V}_b) = \left(1 - \left(\frac{1}{\pi} \right) \cdot \arccos\left(\frac{\vec{V}_a \cdot \vec{V}_b}{\|\vec{V}_a\| \cdot \|\vec{V}_b\|}\right)\right) \cdot 100
-    $$
+    $$\text{sim}(\vec{V}_a, \vec{V}_b) = \left(1 - \left(\frac{1}{\pi} \right) \cdot \arccos\left(\frac{\vec{V}_a \cdot \vec{V}_b}{\|\vec{V}_a\| \cdot \|\vec{V}_b\|}\right)\right) \cdot 100$$
 
 3. **Writing Pairwise Similarities:**
     - Check the `Write pairwise similarities to a .csv file?` option if you wish to save the results of the pairwise similarity comparisons to a .csv file. If checked, $sim(\vec{V}_a, \vec{V}_b)$ will be written to a .csv for each pairwise combination of molecules provided in the directory.
