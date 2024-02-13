@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import QApplication
 
 def ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, calc_line, states, write_gjf_checked):
 
-    # Generate a list of .gjf files from the directory. Note that pseudopotentials write _atom## to the filename, so we filter these out. Also sort in natural order for pairwise comparison 
+    #Generate a list of .gjf files from the directory. Note that pseudopotentials write _atom##to the filename, so we filter these out. Also sort in natural order for pairwise comparison 
     out_filenames = natsorted([x for x in os.listdir(directory) if x.lower().endswith('.out') and '_atom' not in x])
     hess_filenames = natsorted([x for x in os.listdir(directory) if x.lower().endswith('.hess') and '_atom' not in x])
     
@@ -27,7 +27,7 @@ def ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, calc
     print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Starting conversion of {len(out_filenames)} ORCA .out files to VG-FC ORCA .inp files.')
     QApplication.processEvents()
 
-    # Check if output directory exists, create if not
+    #Check if output directory exists, create if not
     new_dir = os.path.join(directory, f'TDDFT_VGFC')
     os.makedirs(new_dir, exist_ok=True)  
        
@@ -53,12 +53,12 @@ def ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, calc
        
     #check that ESD(ABS) is in the calc line, and that other variations of ESD(ABS) are not
     if 'ESD(ABS)' not in calc_line.upper():
-        # Define a regular expression pattern to find any variation of ESD(), where the contents of the parentesis can be anything
+        #Define a regular expression pattern to find any variation of ESD(), where the contents of the parentesis can be anything
         
         pattern = re.compile(r'\bESD\([^)]*\)\b')
         bad_ESD = re.findall(pattern, calc_line)
         
-        if not bad_ESD: # if ESD is given in the calc_line without any parenthesis
+        if not bad_ESD: #if ESD is given in the calc_line without any parenthesis
             pattern = re.compile(r'\bESD\b')
             bad_ESD = re.findall(pattern, calc_line)
 
@@ -83,7 +83,7 @@ def ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, calc
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The number of cores being written to each .inp is {ncores}.')
         QApplication.processEvents()
 
-    # Create ORCA .inp files
+    #Create ORCA .inp files
     for out, hess in zip(out_filenames, hess_filenames):
 
         out_base = out.split('.out')[0]
@@ -148,16 +148,16 @@ def ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, calc
             
             with open(orca_filename, 'w') as opf:
                 
-                # Input block
+                #Input block
                 opf.write(f'{calc_line}\n')
 
-                # Memory
+                #Memory
                 opf.write(f'%maxcore {mpp}\n\n')
 
-                # Number of cores
+                #Number of cores
                 opf.write(f'%pal nprocs {ncores} \nend\n\n')
 
-                # Open shell calcs
+                #Open shell calcs
                 if multiplicity != 1:
                     opf.write(f'%scf HFTyp UHF\n')
                     opf.write('end\n\n')

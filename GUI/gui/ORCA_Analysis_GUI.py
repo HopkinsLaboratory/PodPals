@@ -1003,16 +1003,15 @@ class ORCAOut_ORCA_TDDFT_Tab(QWidget):
     def initUI(self):
         layout = QVBoxLayout()
 
-        #Directory selection title
-        directory_label = QLabel('Directory containing .out and .hess files:')
-        layout.addWidget(directory_label)
-
         #Directory input box
         directory_layout = QHBoxLayout()
+        directory_label = QLabel('Directory:')
         self.directory_input = QLineEdit()
+        self.directory_input.setPlaceholderText('Must contain .hess and .out files w/ the same basename')
         directory_button = QPushButton('Browse')
         directory_button.clicked.connect(self.browse_directory)
 
+        directory_layout.addWidget(directory_label)
         directory_layout.addWidget(self.directory_input)
         directory_layout.addWidget(directory_button)
         layout.addLayout(directory_layout)
@@ -1080,6 +1079,7 @@ class ORCAOut_ORCA_TDDFT_Tab(QWidget):
         n_states_label = QLabel('#states:')
         self.nstates_input = QSpinBox()
         self.nstates_input.setValue(10)
+        self.nstates_input.setMinimum(1)
         self.nstates_input.setMinimumWidth(50)
 
         states_layout.addWidget(n_states_label)
@@ -1148,7 +1148,11 @@ class ORCAOut_ORCA_TDDFT_Tab(QWidget):
         if not calc_line:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The entry for the method cannot be empty.')
             return
-
+        
+        if states < 1:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The number of states requested must be at least 1.')
+            return      
+        
         if len(calc_line.split()) <= 3:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} WARNING: Your method seems rather short. Your input files will be created, but please double-check that have have requested an appropriate method using proper syntax, and that you did not forget any keywords.')
             pass
@@ -1375,7 +1379,7 @@ class CoupledClusterTab(QWidget):
         layout.addSpacing(10)
 
         #Run Button
-        run_button = QPushButton('Extract CCSDT')
+        run_button = QPushButton('Extract coupled cluster energies')
         run_button.clicked.connect(self.run_CCSDT)
         layout.addWidget(run_button)
 
@@ -1384,7 +1388,7 @@ class CoupledClusterTab(QWidget):
         self.setLayout(layout)
 
     def browse_directory(self):
-        directory_path = QFileDialog.getExistingDirectory(self, "Select Directory")
+        directory_path = QFileDialog.getExistingDirectory(self, 'Select Directory')
 
         if directory_path:
             self.directory_input.setText(directory_path)

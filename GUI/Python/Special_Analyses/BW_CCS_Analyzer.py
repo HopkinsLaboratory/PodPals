@@ -54,7 +54,7 @@ def BW_CCS_Analysis(dft_file_path, dlpno_file_path, ccs_file_path, output_file_p
 
     def check_filenames(dft_data, dlpno_data, ccs_data):
         
-        # Extract the filenames directly from the 'filenames' column of each DataFrame, and remove the file extension from the filename
+        #Extract the filenames directly from the 'filenames' column of each DataFrame, and remove the file extension from the filename
         dft_filenames = dft_data['Filename'].tolist()
         ccs_filenames = ccs_data['filename'].tolist()
         
@@ -85,7 +85,7 @@ def BW_CCS_Analysis(dft_file_path, dlpno_file_path, ccs_file_path, output_file_p
             if len(dft_filenames) != len(ccs_filenames):
                 all_match = False
             else:
-                # Compare each index position across all three lists
+                #Compare each index position across all three lists
                 for i in range(len(dft_filenames)):
                     if dft_filenames[i] != ccs_filenames[i]:
                         all_match = False

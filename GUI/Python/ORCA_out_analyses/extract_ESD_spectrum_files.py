@@ -33,17 +33,17 @@ def extract_ESD_spectrum_files(directory, input_unit, shift_unit, output_unit, s
         - y_final: Interpolated 'TotalSpectrum' values on the x_final grid after applying the shift or None if an error is encountered during the processing.
         '''
 
-        # Load the data
+        #Load the data
         #/t spacing is inconsistent in the header for some dumb reason, so we'll use regex to parse by whitespace
         data = pd.read_csv(os.path.join(directory, filename), sep=r'\s+')
 
-        # Check that the dataframe has the expected headers
+        #Check that the dataframe has the expected headers
         required_columns = {'Energy', 'TotalSpectrum', 'IntensityFC', 'IntensityHT'}
         if not required_columns.issubset(data.columns):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The header of {filename} does not contain the required columns: {', '.join(required_columns)}\n. Processing of this file will be skipped.')
             return None
         
-        # Convert energy from input unit to shift unit, and apply the shift
+        #Convert energy from input unit to shift unit, and apply the shift
         try:
             data['Energy'] = data['Energy'].apply(lambda x: convert_energy(x, input_unit, shift_unit) + shift)
         
@@ -55,11 +55,11 @@ def extract_ESD_spectrum_files(directory, input_unit, shift_unit, output_unit, s
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An unexpected error occured when converting the energy from {filename} from the input unit to the shift unit: {e}.\nPlease report this error to the issue section of the GitHub repo.')
             return None
                 
-        # Convert energy from shift unit to output unit
+        #Convert energy from shift unit to output unit
         try:
             data['Energy'] = data['Energy'].apply(lambda x: convert_energy(x, shift_unit, output_unit))
 
-            # Interpolate onto the final output grid
+            #Interpolate onto the final output grid
             f_interp = interp1d(data['Energy'], data['TotalSpectrum'], bounds_error = False, fill_value = 0)
             y_final = f_interp(x_final)
 
@@ -137,7 +137,7 @@ def extract_ESD_spectrum_files(directory, input_unit, shift_unit, output_unit, s
 
                     summary_data[f'{base_name}'] = y_final
 
-                    # Include x_final as a column and convert to DataFrame
+                    #Include x_final as a column and convert to DataFrame
                     final_df = pd.DataFrame(summary_data, index=x_final)
                     final_df.reset_index(inplace=True)
                     final_df.rename(columns={'index': f'energy / {output_unit}'}, inplace=True)
@@ -219,13 +219,13 @@ def extract_ESD_spectrum_files(directory, input_unit, shift_unit, output_unit, s
 #external testing
 if __name__ == '__main__':
     directory = r'D:\OneDrive\OneDrive - University of Waterloo\Waterloo\GitHub\ORCA_Analysis_GUI\Sample_Files\T10_ORCA_extract_VGFC_Spectra\spectrum_files_only'
-    input_unit = 'nm' # Can be 'wavelength', 'wavenumber', or 'eV'
-    output_unit = 'nm' # Can be 'wavelength', 'wavenumber', or 'eV'
-    shift = -0.25 # Must be a number or float 
-    shift_unit = 'eV' # Can be 'wavelength', 'wavenumber', or 'eV'
-    output_lowervalue = 200 # Must be a number or float
-    output_uppervalue = 400 # Must be a number or float
-    output_spacing = 1 # Must be a number or float
+    input_unit = 'nm' #Can be 'wavelength', 'wavenumber', or 'eV'
+    output_unit = 'nm' #Can be 'wavelength', 'wavenumber', or 'eV'
+    shift = -0.25 #Must be a number or float 
+    shift_unit = 'eV' #Can be 'wavelength', 'wavenumber', or 'eV'
+    output_lowervalue = 200 #Must be a number or float
+    output_uppervalue = 400 #Must be a number or float
+    output_spacing = 1 #Must be a number or float
     output_file_basename = 'Fentanyl_OProt' #basename only! no file extension!
 
     normalize_output = False #normalize combined spectra to unity

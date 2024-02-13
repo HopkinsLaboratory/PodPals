@@ -1,4 +1,4 @@
-import os, re, time
+import os, time
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -52,20 +52,20 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
             elif line.startswith(' Multiplicity'):
                 multi = float(line.split()[-1])
             
-            # final electronic energy
+            #final electronic energy
             elif line.startswith('FINAL SINGLE POINT ENERGY'):
                 Eelec = float(line.split()[-1])
 
             #rotational constants
             elif line.startswith('Rotational constants in cm-1'):
-                RotA = float(line.split()[4]) * 100.  # in m**-1
+                RotA = float(line.split()[4]) * 100.  #in m**-1
                 RotB = float(line.split()[5]) * 100.
                 RotC = float(line.split()[6]) * 100.
-                RotABC = np.array([RotA, RotB, RotC])  # in m**-1
+                RotABC = np.array([RotA, RotB, RotC])  #in m**-1
 
             #point group
             elif line.startswith('Point Group:'):
-                sigma_OR = int(line.split()[-1])  # integer
+                sigma_OR = int(line.split()[-1])  #integer
 
             #mass
             elif line.startswith('Total Mass          ...'):
@@ -74,7 +74,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
 
             #dipole moment
             elif line.startswith('Magnitude (Debye)'):
-                total_dipole = float(line.split()[-1])  # in Debye
+                total_dipole = float(line.split()[-1])  #in Debye
 
             #dipole along x, y, and z axes
             elif line.startswith('Total Dipole Moment    :'):
@@ -94,7 +94,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
 
             #polarizability
             elif line.startswith('Isotropic polarizability :'):
-                polariz = float(line.split()[-1]) * 1.4818e-31  # in m^3
+                polariz = float(line.split()[-1]) * 1.4818e-31  #in m^3
 
             #dipole moment along the rotational axes
             elif line.startswith('x,y,z [Debye]'):
@@ -114,7 +114,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                     if vibs_array == None:
                         vibs_array = []
                     
-                    vib_str = line.split()[1]  # Extract the string
+                    vib_str = line.split()[1]  #Extract the string
                     try:
                         vib = float(line.split()[1]) * vib_scl
                     except TypeError:
@@ -122,7 +122,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                         continue
                         
                     if vib > 0:
-                        vibs_array.append(vib)  # in cm**-1
+                        vibs_array.append(vib)  #in cm**-1
                     else: #increase counter for imaginary freqs if any freqs are < 0
                         if imag_freqs == None:
                             imag_freqs = []
@@ -133,7 +133,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         #After all data is extracted from the .out file and thermochem was requested (and was completed!), calculate he ZPE from the now non-None vibs array
         if vibs_array is not None:
             vibs_array = np.array(vibs_array)
-            ZPE = 0.5 * c['h_SI'] * c['c_SI'] * 100. * np.sum(vibs_array) * c['J2Eh']  # Hartree
+            ZPE = 0.5 * c['h_SI'] * c['c_SI'] * 100. * np.sum(vibs_array) * c['J2Eh']  #Hartree
             Total_ZPE = Eelec + ZPE
 
         return charge, multi, Eelec, RotABC, sigma_OR, mass, m_SI, total_dipole, dipole_x, dipole_y, dipole_z, polariz, dipole_ax, vibs_array, ZPE, Total_ZPE, n_imag, imag_freqs, normal_term, thermochem_flag
@@ -228,10 +228,10 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         'Elec. Part. func.',
     ]
 
-    # Format the header for consistent spacing 
+    #Format the header for consistent spacing 
     header = '{},\n'.format(','.join(['{:<25}'] * len(properties)))
 
-    # Create output file and write header to it, ensuring that previous files of the same name are not overwritten
+    #Create output file and write header to it, ensuring that previous files of the same name are not overwritten
     output_csv = os.path.join(directory, f'Thermo_data_{int(T)}K_{int(p/1000)}kPa_{str(vib_scl).replace(".","-")}vibscl.csv')
 
     i = 2
@@ -302,49 +302,49 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
             #placeholder for relative energy
             Erel = 123.0
 
-            # Check if polariz is None and replace it with a placeholder if so
+            #Check if polariz is None and replace it with a placeholder if so
             polariz_value = 'N/A' if polariz is None else polariz
 
-            # Prepare the values to be written
+            #Prepare the values to be written
             values = [filename, n_imag, Eelec, ZPE, Ecorr, Hcorr, Gcorr, Total_ZPE, Total_E, Total_H, Total_S * T, Total_G, Erel, RotABC[0], RotABC[1], RotABC[2], sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, q_trans, q_rot, q_vib, q_elec]
 
         #if the file is missing any info that is checked for, write -12345.0 as a placeholder'
         else:
-            # Check if polariz is None and replace it with a placeholder if so
+            #Check if polariz is None and replace it with a placeholder if so
             polariz_value = 'N/A' if polariz is None else polariz
             
             values = [filename, -12345.0, Eelec, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, RotABC[0], RotABC[1], RotABC[2], sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, q_trans, q_rot, q_vib, q_elec]
             
-        # Create a format string for consistent spacing, then write the data to the output.csv
+        #Create a format string for consistent spacing, then write the data to the output.csv
         format_str = '{}'.format(','.join(['{:<25}'] * len(values)) + ',\n')
 
         with open(output_csv, 'a') as opf:
             opf.write(format_str.format(*values))
 
-    # Calculate the minimum Gibbs energy after all the energies have been extracted and are located in a convienent spot
+    #Calculate the minimum Gibbs energy after all the energies have been extracted and are located in a convienent spot
     min_Gibbs = np.min(Gibbs_list)
 
-    # Read the CSV into a pandas DataFrame
+    #Read the CSV into a pandas DataFrame
     df = pd.read_csv(output_csv)
 
-    # Replace the placeholder relative energies with the actual relative energies in the DataFrame
+    #Replace the placeholder relative energies with the actual relative energies in the DataFrame
     df['Relative Gibbs Energy    '] = (df['Total Gibbs Energy       '] - min_Gibbs) * 2625.4996395 #Conversion for Hartree to kJ/mol - can be changed to user preference
 
     #Sort files based on user input
     if sort_by == 'G':
-        # Sort the DataFrame based on 'Relative Gibbs Energy'
+        #Sort the DataFrame based on 'Relative Gibbs Energy'
         df = df.sort_values(by='Relative Gibbs Energy    ')
 
     if sort_by == 'H':
-        # Sort the DataFrame based on 'Total Enthalpy'
+        #Sort the DataFrame based on 'Total Enthalpy'
         df = df.sort_values(by='Total Enthalpy           ')
 
     if sort_by == 'E':
-        # Sort the DataFrame based on 'Total Thermal Energy'
+        #Sort the DataFrame based on 'Total Thermal Energy'
         df = df.sort_values(by='Total Thermal Energy     ')
 
     if sort_by == 'S':
-        # Sort the DataFrame based on 'Total Thermal Energy'
+        #Sort the DataFrame based on 'Total Thermal Energy'
         df = df.sort_values(by='Total Entropy            ')
 
     if sort_by == 'Z':
@@ -352,7 +352,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
 
     #Write the updated DataFrame back to the CSV with consistent spacing
     with open(output_csv, 'w') as opf:
-        opf.write(header.format(*properties))  # Write the header first
+        opf.write(header.format(*properties))  #Write the header first
 
         for _, row in df.iterrows():
             values = list(row)
@@ -386,33 +386,33 @@ if __name__ == "__main__":
 
     '''fundamental constants'''
 
-    pi4eps = 4.*np.pi*8.8541878128e-12 # F/m, 4pi*electric constant
-    kB = 1.380649e-23 # J/K boltzmann constant
-    N_Av = 6.02214076e+23 # Avogadro's number
-    h_SI = 6.62607015e-34 # Js, Planck constant
-    h_bar = h_SI/(2.*np.pi) # reduced Planck constant
-    c_SI = 299792458. # m/s, speed of light
-    elC = 1.602176634e-19 # C, elementary charge
-    m_el = 9.1093837015e-31 # kg, electron mass
-    r_Bohr = pi4eps*h_bar**2 / (elC**2 * m_el) # m, Bohr radius
+    pi4eps = 4.*np.pi*8.8541878128e-12 #F/m, 4pi*electric constant
+    kB = 1.380649e-23 #J/K boltzmann constant
+    N_Av = 6.02214076e+23 #Avogadro's number
+    h_SI = 6.62607015e-34 #Js, Planck constant
+    h_bar = h_SI/(2.*np.pi) #reduced Planck constant
+    c_SI = 299792458. #m/s, speed of light
+    elC = 1.602176634e-19 #C, elementary charge
+    m_el = 9.1093837015e-31 #kg, electron mass
+    r_Bohr = pi4eps*h_bar**2 / (elC**2 * m_el) #m, Bohr radius
 
-    ## unit conversions
-    bohr2m = r_Bohr # m/bohr
-    bohr2A = bohr2m * 1.0e+10 # Angstrom/bohr
-    cm2in = 0.3937 # cm to inch
-    J2Eh = (m_el * r_Bohr**2) / (h_bar**2) # 1 Joule in hartree
-    amu2kg = 1./N_Av * 1e-3 # amu/kg
-    D2Cm = 3.336e-30 # Debye to Coulomb*m
-    eigval2s2 = 1e20/amu2kg/J2Eh # Eh/Ang**2.amu = 2.62549964E+29 s**-2
+    ##unit conversions
+    bohr2m = r_Bohr #m/bohr
+    bohr2A = bohr2m * 1.0e+10 #Angstrom/bohr
+    cm2in = 0.3937 #cm to inch
+    J2Eh = (m_el * r_Bohr**2) / (h_bar**2) #1 Joule in hartree
+    amu2kg = 1./N_Av * 1e-3 #amu/kg
+    D2Cm = 3.336e-30 #Debye to Coulomb*m
+    eigval2s2 = 1e20/amu2kg/J2Eh #Eh/Ang**2.amu = 2.62549964E+29 s**-2
 
     #spectroscopic unit conversions
-    eV2J = elC # Conversion factor from eV to Joules
-    nm2m = 1E-9 # Conversion factor from nm to meters
-    cm2m = 1E-2 # Conversion factor from cm to meters
+    eV2J = elC #Conversion factor from eV to Joules
+    nm2m = 1E-9 #Conversion factor from nm to meters
+    cm2m = 1E-2 #Conversion factor from cm to meters
 
-    ## fundamental constants in other units
-    kB_Eh = kB*J2Eh # hartree/kelvin
-    h_cm = h_SI/(h_SI*c_SI*100.) # cm**-1 * s, Planck constant in wavenumber*s
+    ##fundamental constants in other units
+    kB_Eh = kB*J2Eh #hartree/kelvin
+    h_cm = h_SI/(h_SI*c_SI*100.) #cm**-1 * s, Planck constant in wavenumber*s
 
     '''dictionary to write all the constants to'''
 

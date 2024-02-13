@@ -6,9 +6,9 @@ from datetime import datetime
 
 def LED_Analysis(fragment1, fragment2, parent, output_csv):
 
-    # Constants
-    J2Eh = 1 / (4.3597447222071e-18)  # Joule to Hartree conversion
-    N_Av = 6.02214076e23  # Avogadro's number
+    #Constants
+    J2Eh = 1 / (4.3597447222071e-18)  #Joule to Hartree conversion
+    N_Av = 6.02214076e23  #Avogadro's number
 
     def parse_Fi_file(file):
         with open(file) as f:
@@ -72,7 +72,7 @@ def LED_Analysis(fragment1, fragment2, parent, output_csv):
 
         with open(filename, 'w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(['Description', 'Value (kJ/mol)'])  # Header row
+            writer.writerow(['Description', 'Value (kJ/mol)'])  #Header row
 
             for desc, value in summary:
                 print(f'{desc:15s} = {value:+.8f} kJ/mol')
@@ -130,24 +130,24 @@ def LED_Analysis(fragment1, fragment2, parent, output_csv):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} There was a problem extracting energies from {os.path.basename(LED_file)}. Did it finish correctly?')
             return
         
-        # If all the numbers are present, its time to do the LED analysis
+        #If all the numbers are present, its time to do the LED analysis
         F1_E_tot = F1_E_ref + F1_E_C_CCSD + F1_E_C_T #fragment 1 total energy
         F2_E_tot = F2_E_ref + F2_E_C_CCSD + F2_E_C_T #fragment 2 total energy
         Ad_E_tot = Ad_E_ref + Ad_E_C_CCSD + Ad_E_C_T #parent adduct total energy
 
         E_int = E_tot - (F1_E_tot + F2_E_tot) #total interaction energy
-        dE_elprep_ref = E_XvY_ref - (F1_E_ref + F2_E_ref) # electronic preparation energy (ref wf)
-        dE_nondisp_CCSD = E_nondisp - (F1_E_C_CCSD + F2_E_C_CCSD) # non-dispersion energy (correlation)
-        dE_C_T = Ad_E_C_T - (F1_E_C_T + F2_E_C_T) # triplets contribution
+        dE_elprep_ref = E_XvY_ref - (F1_E_ref + F2_E_ref) #electronic preparation energy (ref wf)
+        dE_nondisp_CCSD = E_nondisp - (F1_E_C_CCSD + F2_E_C_CCSD) #non-dispersion energy (correlation)
+        dE_C_T = Ad_E_C_T - (F1_E_C_T + F2_E_C_T) #triplets contribution
 
-        # Print Summary
+        #Print Summary
         print_summary(E_int, dE_elprep_ref, E_elstat, E_exch, E_disp, dE_nondisp_CCSD, dE_C_T, output_file)
 
-        # Plot Summary
-        Es = np.array([dE_elprep_ref, E_elstat, E_exch, E_disp, dE_nondisp_CCSD, dE_C_T, E_int]) / J2Eh * N_Av * 1e-3  # Convert to kJ/mol
+        #Plot Summary
+        Es = np.array([dE_elprep_ref, E_elstat, E_exch, E_disp, dE_nondisp_CCSD, dE_C_T, E_int]) / J2Eh * N_Av * 1e-3  #Convert to kJ/mol
         plot_summary(Es, output_csv.replace('.csv', '.png'))
 
-    # Main execution
+    #Main execution
     run_LED_analysis(fragment1, fragment2, parent, output_csv)
 
 #external testing

@@ -1,4 +1,4 @@
-import os, re, time
+import os, time
 from datetime import datetime
 import numpy as np
 from PyQt6.QtWidgets import QApplication

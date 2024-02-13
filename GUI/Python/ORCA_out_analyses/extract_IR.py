@@ -20,7 +20,7 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, nor
         with open(file, 'r') as opf:
             file_content = opf.read()
         
-        # Find the start and end indices of the IR spectrum section
+        #Find the start and end indices of the IR spectrum section
         start_idx = file_content.find('-----------\nIR SPECTRUM\n-----------')
         end_idx = file_content.find('--------------------------\nTHERMOCHEMISTRY AT')
 
@@ -29,10 +29,10 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, nor
             return None, None
         
         else:
-            # Extract the IR spectrum block
+            #Extract the IR spectrum block
             ir_block = file_content[start_idx:end_idx].strip()
 
-            # Split the block into lines and extract frequency and intensity
+            #Split the block into lines and extract frequency and intensity
             lines = ir_block.split('\n')
             data_lines = [line.split() for line in lines[7:-6]]
             try:
@@ -47,24 +47,24 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, nor
             
     def broaden_spectrum(file, freq, intensity, fwhm, lower_bound, upper_bound, step_size, normalization):
         '''Broadens each absoprtion in an IR stick strectrum with a user specified Gaussian FWHM.'''
-        # Create a grid from the lower_bound to the upper_bound with 1 cm**-1 spacing
+        #Create a grid from the lower_bound to the upper_bound with 1 cm**-1 spacing
         freq_grid = np.arange(lower_bound, upper_bound + step_size, step_size)
 
         #define sigma for gaussian function
         w = fwhm / (2 * np.sqrt(np.log(4)))
 
-        # Create an empty array to store the broadened spectrum
+        #Create an empty array to store the broadened spectrum
         broadened_spectrum = np.zeros_like(freq_grid, dtype=float)
 
-        # Broaden the spectrum for each frequency/intensity pair
+        #Broaden the spectrum for each frequency/intensity pair
         for f, i in zip(freq, intensity):
 
             broadened_intensity = i * np.exp(-0.5 * np.square((freq_grid - f) / w))
 
-            # Add the broadened intensity to the overall spectrum
+            #Add the broadened intensity to the overall spectrum
             broadened_spectrum += broadened_intensity        
 
-        # Get the maximum value of the spectrum to prepare for normalization
+        #Get the maximum value of the spectrum to prepare for normalization
         max_value = np.max(broadened_spectrum)
         
         if np.isclose(max_value, 0, atol=1E-3):
@@ -88,19 +88,19 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, nor
 
     stime = time.time()
 
-    # Create a Pandas DataFrame to store the results
+    #Create a Pandas DataFrame to store the results
     df = pd.DataFrame()
 
     for file in filenames:
 
-        # Extract IR spectrum from the file - extract_ir_freqs returns None for freq, intensity if an .out file does not contain any IR freq data
+        #Extract IR spectrum from the file - extract_ir_freqs returns None for freq, intensity if an .out file does not contain any IR freq data
         freq, intensity = extract_ir_freqs(os.path.join(directory, file),scale_freq)
 
-        # Broaden the spectrum only if IR data was sucessfuly extracted from the file
+        #Broaden the spectrum only if IR data was sucessfuly extracted from the file
         if freq is not None and intensity is not None:
             freq_grid, broadened_spectrum = broaden_spectrum(file, freq, intensity, fwhm, lower_bound, upper_bound, step_size, normalization)
 
-            # Add the broadened spectrum to the DataFrame with the file title as the column header - broaden_spectrum returns None for freq_grid, broadened_spectrum if the max intensity of all IR freqs is zero. 
+            #Add the broadened spectrum to the DataFrame with the file title as the column header - broaden_spectrum returns None for freq_grid, broadened_spectrum if the max intensity of all IR freqs is zero. 
             if freq_grid is not None and broadened_spectrum is not None:
                 df[os.path.basename(file)] = broadened_spectrum
 
@@ -108,13 +108,13 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, nor
         else:
             continue
 
-    # Add the wavenumber column to the DataFrame
+    #Add the wavenumber column to the DataFrame
     df['Wavenumber'] = freq_grid
 
-    # Reorder columns
+    #Reorder columns
     df = df[['Wavenumber'] + [col for col in df.columns if col != 'Wavenumber']]
 
-    # Write the DataFrame to an Excel file, unsuring that it does not overwrite previous data
+    #Write the DataFrame to an Excel file, unsuring that it does not overwrite previous data
     if normalization:
         output_file = os.path.join(directory, f'output_spectrum_scaled_{str(scale_freq).replace(".", "-")}_fwhm_{fwhm}cm_Norm.xlsx')
 
@@ -144,7 +144,7 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, nor
         #initialize list to store filenames for generating plot legend
         labels = []
 
-        # Loop through each spectrum in the DataFrame (excluding 'Wavenumber')
+        #Loop through each spectrum in the DataFrame (excluding 'Wavenumber')
         for column in df.columns:
             if column != 'Wavenumber':
                 plt.plot(df['Wavenumber'], df[column], label=column)
@@ -168,7 +168,7 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, nor
                 
                 labels.append(new_label)
 
-        # Customizing the plot
+        #Customizing the plot
         plt.xlabel('Wavenumber (cm-1)')
         plt.ylabel('Intensity')
         plt.title('Extracted IR Spectra')
@@ -192,16 +192,16 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, nor
 
 #external testing
 if __name__ == "__main__":
-    # Specify the directory containing .out files
+    #Specify the directory containing .out files
     directory = r'D:\OneDrive\OneDrive - University of Waterloo\Waterloo\GitHub\ORCA_Analysis_GUI\Sample_Files\T9_ORCA_Vib_Spectrum_Analyzer'
 
-    # Specify the FWHM for broadening
+    #Specify the FWHM for broadening
     fwhm_value = 8
 
-    # Specify the lower and upper bounds
+    #Specify the lower and upper bounds
     lower_bound_value = 500 #must be an integer
     upper_bound_value = 3600 #must be an integer
-    step_size = 1 # must be an integer
+    step_size = 1 #must be an integer
 
     #harmonic scaling factor
     scale_freq = 0.9875
@@ -212,5 +212,5 @@ if __name__ == "__main__":
     #option to plot spectra
     plotting = False
 
-    # Process the .out files and write the results to an Excel file
+    #Process the .out files and write the results to an Excel file
     extract_IR_spectra(directory, fwhm_value, lower_bound_value, upper_bound_value, step_size, normalization, plotting, scale_freq)

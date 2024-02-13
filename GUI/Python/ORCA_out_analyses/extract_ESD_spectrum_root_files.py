@@ -238,7 +238,7 @@ def extract_ESD_spectrum_root_files(directory, input_unit, shift_unit, output_un
             num_items = len(handles)
             num_cols = np.ceil(num_items / 3)  #This will ensure 3 rows
             
-            # Set the legend dynamically below the subplots
+            #Set the legend dynamically below the subplots
             #legend_offset = -1.1306 * exp(-0.8627 * rows) - exp fit to data for rows 1 - 7
             fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, (-1.1306 * np.exp(-0.8627 * rows))), ncol=num_cols, fancybox=True, shadow=True)
        
