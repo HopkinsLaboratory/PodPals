@@ -20,27 +20,27 @@ Install the necessary Python modules using `pip` in your command prompt:
 pip install importlib numpy scipy matplotlib git lxml PyQt6 pyarrow pandas openpyxl csv natsort
 ```
 
-## GUI Functionality
+# GUI Usage
 The GUI features 13 modules designed to facilitate the analysis of ORCA output files across various common and advanced applications, organized by their functionality.
 
-### T1. CREST .xyz Splitter:
+## T1. CREST .xyz Splitter:
 This module extracts conformers and their energies identified by the [Conformer–Rotamer Ensemble Sampling Tool (CREST)](https://crest-lab.github.io/crest-docs/), an exceptionally efficient program for mapping low-energy conformations of any analyte. *XYZ* coordinates of each conformer are stored in the `crest_conformers.xyz` file, which is generated upon completion of a CREST run. The `CREST .xyz splitter` module extracts each conformer to individual `.gjf`, `.xyz`, or `.inp` files . Extracting of conformers to alternative file types will be added in future updates. 
 
 - **Inputs:**
-    - .xyz file: Specify the path and filename of `crest_conformers.xyz`. 
-    - Output basename: Define the basename for exported conformer files. Each file will be suffixed with _N, where N is an integer, to ensure unique identification.
-    
+    - **.xyz file**: Specify the path and filename of `crest_conformers.xyz`. 
+    - **Output basename**: Define the basename for exported conformer files. Each file will be suffixed with _N, where N is an integer, to ensure unique identification.
+    - **Export file type**: Choose whether to extract conformers from `crest_conformers.xyz` to `.gjf`, `.xyz`, or `.inp` files. 
 - **Outputs:**
     - Writes all conformers extracted from `crest_conformers.xyz` to individual .gjf files in the directory `Conformers`. 
     - Writes `Energies.csv`, a file summarizing the name, energy, and relative energy sorted in ascending order for direct use with `T2. Cosine similarity sorting`.
 
-#### **Usage and [example files](https://github.com/HopkinsLaboratory/ORCA_Analysis_GUI/tree/master/Sample_Files/T1_CREST_xyz_splitter)**: 
-- **Select .xyz File**: Click the "Browse" button to open a file explorer window. Navigate to and select the .xyz file you wish to split.
+### **Usage of T1 and [example files](https://github.com/HopkinsLaboratory/ORCA_Analysis_GUI/tree/master/Sample_Files/T1_CREST_xyz_splitter)**: 
+- **Select .xyz File**: Click the "Browse" button to open a file explorer window. Navigate to and select the .xyz file you wish to split, or paste the file path into the dialog box. 
 - **Specify Output Basename**: Enter a basename for the output files in the designated input box.
-- **Execute Splitting**: Click the `Run` button to start the splitting process. The script will write output files with named determined by the `output basename` to the `Conformers` directory, .
+- **Execute Splitting**: Click the `Run` button to start the splitting process. The script will write output files with named determined by the `output basename` to the `Conformers` directory.
 - **Integrated error handling**: Any errors or issues encountered will be reported to the `Status window`, prompting the user to adjust their input accordingly.
 
-### T2. Cosine similarity sorting:
+## T2. Cosine similarity sorting:
 This module processes multiple .gjf, .inp, and/or .xyz files to identify unique conformations using the cosine similarity method detailed [here](https://www.frontiersin.org/articles/10.3389/fchem.2019.00519/full). It is specifically designed to integrate with outputs from the [CREST .xyz Splitter](#1-crest-xyz-splitter), including the `Energies.csv` file.
 
 - **Inputs:**
@@ -65,56 +65,63 @@ This module processes multiple .gjf, .inp, and/or .xyz files to identify unique 
 - **Outputs:**
     Files exhibitng a pairwise $sim(\vec{V}_a, \vec{V}_b)$ below the specified threshold will be copied to a newly created directory called `uniques_sim_N`, where N is the similiarity threshold. If the `Write pairwise similiarities to a .csv file` option was checked, `pairwise_similiarities.csv` will be written to the `uniques_sim_N` directory. 
 
-#### **Usage and [example files](https://github.com/HopkinsLaboratory/ORCA_Analysis_GUI/tree/master/Sample_Files/T2_Cosine_sim)**: 
+### **Usage of T2 and [example files](https://github.com/HopkinsLaboratory/ORCA_Analysis_GUI/tree/master/Sample_Files/T2_Cosine_sim)**: 
 
-**Directory or .csv input:**
-- Click the `Browse dir` button to select a directory containing your .gjf, .xyz, and/or .inp files.
-- Alternatively, use the `Browse .csv` button to select a .csv file. Ensure your .csv file is formatted correctly, with headers that are `Filename`, `Energy / hartree`, and `Relative Energy / kJ mol**-1`.
+1. **Directory or .csv input:**
+- Click the `Browse dir` button to select a directory containing your .gjf, .xyz, and/or .inp files, or paste the directory path into the dialog box.
+- Alternatively, use the `Browse .csv` button to select a .csv file, or paste the directory path into the dialog box. Ensure your .csv file is formatted correctly, with headers that are `Filename`, `Energy / hartree`, and `Relative Energy / kJ mol**-1`.
 
-**Setting the similiarity threshold:**
+2. **Setting the similiarity threshold:**
 - Adjust the `Cosine similarity threshold (*100):` field to set your desired threshold for similarity comparisons. Thresholds can be defined anywhere between 0.00 to 99.99.
 
-**Writing Pairwise Similarities:**
+3. **Writing Pairwise Similarities:**
 - Check the `Write pairwise similarities to a .csv file?` option if you wish to save the results of the pairwise similarity comparisons to a .csv file.
 
-**Running the Analysis:**
+4. **Running the Analysis:**
 - Once you have configured your inputs and options, click the `Sort files by cosine similarity` button to initiate the analysis.
 
-**Integrated error handling:**
-Several checks are automatically performed to ensure valid input:
-- For .csv inputs, it verifies the presence of the correct headers, the format of filenames, and the numerical and sorted nature of energy values.
-- For directory inputs, it checks for the presence of at least two suitable files.
-- Files contain atomic *XYZ* coordinates.
-- Any errors or issues encountered will be reported to the `Status window`, prompting the user to adjust their input accordingly.
+**Integrated error handling**: Any errors or issues encountered will be reported to the `Status window`, prompting the user to adjust their input accordingly.
 
-### **T3. Generate ORCA .inp:** 
+## T3. Generate ORCA .inp: 
 This module processes a directory containing .gjf, .inp, and/or .xyz files and converts each into a new ORCA .inp file with its content controlled through the GUI interface. 
 
 **Inputs:**
-    - **Directory**: Users must provide a directory path that contains at least one .gjf, .xyz, or .inp file. This directory can be selected directly through the GUI by clicking the Browse button.
-    - **Performance Settings**: Specify the memory per core (MB), number of cores, charge, and multiplicity for the ORCA calculations. These settings allow for fine-tuning the computational resources allocated for each job.
-    - **Calculation Method**: Choose between predefined methods (DFT, CCSDT) or a custom method. The GUI automatically populates the method line based on the selection.
-    - **ESP Charges**: Optionally compute ESP charges by selecting the `Compute ESP Charges?` checkbox. This action enables additional input fields for grid and Rmax (both in Angstroms). Reccomended values for $grid$ and $R_{max}$ are 0.1 Å and 3.0 Å, respectively. With these settings, the CHELPG partition scheme uses a grid composed of points spaced apart by 0.1 Å, where each $grid$ point is at most 3.0 Å away from any atom in the molecule. For larger molecules (> 350 electrons without pseudopotentials), using a coarser grid with the parameters $grid = 0.3 Å$ and $R_{max} = 3.0 Å$ is reccomended.
-    - **Additional Options**: Users can opt to calculate the Hessian on the first optimization step, compute dipole/quadrupole moments, or call XYZ coordinates from an external .xyz file by selecting the respective boxes.
+- **Directory**: Users must provide a directory path that contains at least one .gjf, .xyz, or .inp file. This directory can be selected directly through the GUI by clicking the Browse button.
+- **Performance Settings**: Specify the memory per core (MB), number of cores, charge, and multiplicity for the ORCA calculations. These settings allow for fine-tuning the computational resources allocated for each job.
+- **Calculation Method**: Choose between predefined methods (DFT, CCSDT) or a custom method. The GUI automatically populates the method line based on the selection.
+- **ESP Charges**: Optionally compute ESP charges by selecting the `Compute ESP Charges?` checkbox. This action enables additional input fields for grid and Rmax (both in Angstroms). Reccomended values for $grid$ and $R_{max}$ are 0.1 Å and 3.0 Å, respectively. With these settings, the CHELPG partition scheme uses a grid composed of points spaced apart by 0.1 Å, where each $grid$ point is at most 3.0 Å away from any atom in the molecule. For larger molecules (> 350 electrons without pseudopotentials), using a coarser grid with the parameters $grid = 0.3 Å$ and $R_{max} = 3.0 Å$ is reccomended.
+- **Additional Options**: Users can opt to calculate the Hessian on the first optimization step, compute dipole/quadrupole moments, or call XYZ coordinates from an external .xyz file by selecting the respective boxes.
 
 **Outputs:**
-For each input file within the specified directory, the module generates an ORCA input file (.inp) with the designated settings. These files are saved in the same directory, ready for submission to ORCA for quantum-chemical calculations.
+For each input file within the specified directory, the module generates a new ORCA input file (.inp) with the requested parameters. These files are saved to a new directory called `New_Inputs` or `New_Inputs_xyz` depending on whether the `Call XYZ coordinates from external .xyz file?` option was selected. 
 
-#### **Usage and [example files](https://github.com/HopkinsLaboratory/ORCA_Analysis_GUI/tree/master/Sample_Files/T3_gjf_to_ORCA_inp)**: 
+### **Usage and [example files](https://github.com/HopkinsLaboratory/ORCA_Analysis_GUI/tree/master/Sample_Files/T3_gjf_to_ORCA_inp)**: 
 
+1. **Select directory**: Use the `Browse` button to choose the directory containing your molecular geometry files (.gjf, .xyz, or .inp), or paste the file path directly into the dialog box.
 
+2. **Configure the performance settings**: Adjust the memory per core (in MB), number of cores, charge, and multiplicity as required for your calculations.
 
+3. **Choose the calculation method**: Select a predefined method or customize your own. The method line can be edited in the Custom mode for specific requirements.
 
+4. **Compute ESP charges (optional)**: If desired, enable ESP charge computation and specify the $grid$ and $R_{max}$ values.
 
+5. **Additional options**: Decide whether to calculate the Hessian, compute dipole/quadrupole moments, or call XYZ coordinates from an external .xyz file.
 
+6. **Generate .inp files**: Click the Run button to create the ORCA .inp files in the specified directory.
 
+**Integrated error handling**: Any errors or issues encountered will be reported to the `Status window`, prompting the user to adjust their input accordingly.
 
+## **T4. ORCA .out to ORCA .inp (Opt/Freq)**: 
+This module processes a directory containing .out files from ORCA calculations, extracting the final geometries to generate new ORCA .inp files for optimization/frequency jobs. The configuration of these .inp files, including their content and options, is managed through the GUI interface.
 
-### **T4. ORCA .out to ORCA .inp (Opt/Freq)**: 
-Take a directory containing a series of ORCA .out files, extracts the final geometry, and writes the extracted geometry to a new ORCA .inp file with custom inputs determined via inputs to the GUI interface. This is exceptionally useful for restarting ORCA calculations on failed runs and run single-point energy evaluations on DFT-optimized geometries using high levels of quantum-chemical theory like DLPNO-CCSD(T) to name a few. 
+**Inputs, outputs, usage, and [example files](https://github.com/HopkinsLaboratory/ORCA_Analysis_GUI/tree/master/Sample_Files/T4_ORCA_out_to_ORCA_inp):**
+The inputs and outputs for this module align with those described in [T3. Generate ORCA .inp](#t3-generate-orca-inp), with one additional feature:
+- **Additional Options**: There's an option to `Write final coordinates to a .gjf file`. Selecting this checkbox creates `.gjf` files alongside `.inp` files, facilitating visualization using external software packages like GaussView.
 
-### **T5. ORCA .out to ORCA .inp (VGFC/TD-DFT)**
-Take a directory containing a series of ORCA .out files, extracts the final geometry, and writes the extracted geometry to a new ORCA .inp file with custom inputs for computing UV-Vis absorption spectra using the Vertical Gradient Franck-Condon (VG|FC) method, which is sometimes called the Independent Mode Displaced Harmonic Oscillator (IMDHO) model. 
+**Integrated error handling**: Any errors or issues encountered will be reported to the `Status window`, prompting the user to adjust their input accordingly.
+
+## **T5. ORCA .out to ORCA .inp (VGFC/TD-DFT)**
+This module processes a directory containing .out files from ORCA calculations, extracting the final geometries to generate new ORCA .inp files for computing UV-Vis absorption spectra via the Vertical Gradient Franck-Condon (VG|FC) approach, which is sometimes called the Independent Mode Displaced Harmonic Oscillator (IMDHO) model. The configuration of these .inp files, including their content and options, is managed through the GUI interface.
 
 ### **T6. Plot optimization trajectory**:
 Plots the energy change, SCF energy, max gradient, max step, RMS gradient, and RMS step as a function of the number of optimziation cycles for a single ORCA .out file containing the Opt keyword (or any other vairant that performs a geometry optimization).
