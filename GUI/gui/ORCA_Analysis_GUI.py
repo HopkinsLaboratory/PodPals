@@ -171,7 +171,8 @@ class ORCAAnalysisSuite(QMainWindow):
 
                 #Check if the command was successful
                 if result.returncode != 0:
-                    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error when obtaining the latest SHA value from the ORCA Analysis GUI GitHub repo (likely due to lack of an internet connection): {result.stderr}')
+                    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error when obtaining the latest SHA value from the ORCA Analysis GUI GitHub repo (likely due to lack of an internet connection):\n{result.stderr}')
+                    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} If you have an internet connection, it is possible something intrinsic to the repository has been modifed. Pleaser re-clone the GitHub repo, then try to launch again from the updated files.')
                     return
 
                 #Parse the output to get the SHA
