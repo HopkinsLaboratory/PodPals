@@ -24,7 +24,7 @@ pip install importlib numpy scipy matplotlib git lxml PyQt6 pyarrow pandas openp
 ## PodPals code
 To clone the PodPals repository, open your terminal or command prompt and enter the following command: 
 
-```bash
+```console
 git clone https://github.com/HopkinsLaboratory/PodPals.git /path/to/your/desired/directory
 ```
 
@@ -306,29 +306,29 @@ This module summarizes the results from a Local Energy Decomposition (LED) calcu
 1. **Provide DLPNO-CCSD(T) LED .out file of the parent complex**: Provide the path and filename of the .out file containing the output from the LED analysis. , use the Browse buttons to select the respective .out files containing DLPNO-CCSD(T) calculations. This can be set manually, pasted directly into the dialog box, or by using the `Browse` button.
 2. **Provide DLPNO-CCSD(T) single point energy .out files for each fragment of the parent complex**: Provide the path and filename of each .out file containing the output from a DLPNO-CCSD(T) energy calculation of each fragment of the parent molecule. This can be set manually, pasted directly into the dialog box, or by using the `Browse` button.
 3. **Run LED analysis**: Click the `Run LED Analysis` button to start the calculation. The analysis will read components from each file and calculate the following interactions:
-    1. **Repulsive Electronic Preparation ($E_{\text{elprep}}$​)**:
+    1. **Repulsive Electronic Preparation ($E_{elprep}$​)**:
         This term represents the energy required to to distort the electronic structures of the isolated fragments from their ground states to the ones they have in the parent complex.
-        $$E_{\text{elprep}} = E_{\text{XvY\_ref}} - (E_{\text{F1\_ref}} + E_{\text{F2\_ref}})$$
-    2. **Intermolecular Electrostatic Interaction ($E_{\text{elstat}}$)**:
+        $$E_{elprep} = E_{XvY_{ref}} - (E_{F1_{ref}} + E_{F2_{ref}})$$
+    2. **Intermolecular Electrostatic Interaction ($E_{elstat}$)**:
         This term represents the electrostatic interaction between the electron densities of the fragments in the parent complex, thus providing a quantification to the permanent electrostatic interaction (i.e., the interaction between charges and/or permanent multipoles on different fragments). 
-        $$E_{\text{elstat}} = \text{Electrostatics contributions from the LED analysis}$$
-    3. **Intermolecular exchange interaction($E_{\text{Exch}}$)**:
+        $$E_{elstat} = \text{Electrostatics contributions from the LED analysis}$$
+    3. **Intermolecular exchange interaction($E_{Exch}$)**:
         This term represents the exchange interaction between the electron densities of the fragments in the parent complex.
-        $$E_{\text{Exch}} = \text{Exchange contributions from the LED analysis}$$
-    4. **CCSD correlation energy (dispersion) ($E_{\text{disp}}$)**:
+        $$E_{Exch} = \text{Exchange contributions from the LED analysis}$$
+    4. **CCSD correlation energy (dispersion) ($E_{disp}$)**:
         This term represents the dispersion based contribution to the CCSD correlation energy of the interacting fragments within the parent complex
-        $$E_{\text{disp}} = \text{Dispersion contributions from the LED analysis}$$
-    5. **CCSD correlation energy (non-dispersion) ($E_{\text{nondisp}}$)**:
+        $$E_{disp} = \text{Dispersion contributions from the LED analysis}$$
+    5. **CCSD correlation energy (non-dispersion) ($E_{nondisp}$)**:
         This term represents the non-dispersion based contribution to the CCSD correlation energy of the interacting fragments within the parent complex
-        $$E_{\text{nondisp}} = E_{\text{nondisp}} - (E_{\text{F1\_C\_CCSD}} + E_{\text{F2\_C\_CCSD}})$$
-    6. **Perturbative triples correlation interaction ($E_{\text{trip}}$)**:
+        $$E_{nondisp} = E_{nondisp} - (E_{F1_{C_{CCSD}}} + E_{F2_{C_{CCSD}}})$$
+    6. **Perturbative triples correlation interaction ($E_{trip}$)**:
         This term represents the energy contribution from the perturbative treatment of triple excitations:
-        $$E_{\text{trip}} = E_{\text{Ad\_C\_T}} - (E_{\text{F1\_C\_T}} + E_{\text{F2\_C\_T}})$$
-    7. **Total interaction energy**:
+        $$E_{\text{trip}} = E_{Ad_{CT}} - (E_{F1_{CT}} + E_{F2_{CT}})$$
+    7. **Total interaction energy ($$E_{tot}$)**:
         This term represents the total interaction energy between the fragments, calculated as the difference between the total energy of the combined system and the sum of the total energies of the individual fragments:
-        $$E_{\text{tot}} = E_{\text{int}} = E_{\text{LED\_tot}} - (E_{\text{F1\_tot}} + E_{\text{F2\_tot}})$$
+        $$E_{tot} = E_{int} = E_{LED_{tot}} - (E_{F1_{tot}} + E_{F2_{tot}})$$
         or equivalently, 
-        $$E_{\text{tot}} = E_{\text{elprep}} + E_{\text{elstat}} + E_{\text{Exch}} + E_{\text{disp}} + E_{\text{nondisp}} + E_{\text{trip}}$$
+        $$E_{tot} = E_{elprep} + E_{elstat} + E_{Exch} + E_{disp} + E_{nondisp} + E_{trip}$$
 
 Each term is written to a .csv file called `LED_analysis.csv` as well as to a plot called `LED_analysis.png`. All terms are provided in kJ/mol. 
 
