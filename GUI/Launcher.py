@@ -237,6 +237,11 @@ if __name__ == '__main__':
     #If dependencies are present, proceed to launch the GUI
     if dependencies_check:
         app = QApplication(sys.argv)
+
+        #set the app icon for both the GUI window and taskbar - sorry windows users, you'll only ever see the icon in the GUI window!
+        icon_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'gui', 'icon.png')
+        app.setWindowIcon(QIcon(icon_path))
+
         main_win = ORCAAnalysisSuite()
         main_win.show() #show the main window
         main_win.check_for_update_and_prompt()  #Check for updates after showing the window    

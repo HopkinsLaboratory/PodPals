@@ -55,6 +55,7 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function, ens
             str(os.path.join(root, 'Launcher.py')): str(os.path.join(temp_dir, 'GUI', 'Launcher.py')), #GUI launcher
             #str(os.path.join(root, 'gui', 'Update.py')): str(os.path.join(temp_dir, 'GUI', 'gui', 'Update.py')), #Update function
             str(os.path.join(root, 'gui', 'ORCA_Analysis_GUI.py')): str(os.path.join(temp_dir, 'GUI', 'gui', 'ORCA_Analysis_GUI.py')), #GUI layout file
+            str(os.path.join(root, 'gui', 'icon.png')): str(os.path.join(temp_dir, 'GUI', 'gui', 'icon.png')), #The icon for the GUI window
 
             str(os.path.join(root, 'Python', 'atom_mass.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'atom_mass.py')), #py file with Atom masses 
             str(os.path.join(root, 'Python', 'constants_and_conversions.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'constants_and_conversions.py')), #py file with fundamental contants & functions for unit conversions 

@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QApplication, QHBoxLayout, QComboBox, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QMessageBox, QLabel, QGroupBox, QLineEdit, QPushButton, QFileDialog, QTextEdit, QCheckBox, QSpinBox, QSizePolicy, QDoubleSpinBox
 from PyQt6.QtCore import QCoreApplication, Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QScreen
+from PyQt6.QtGui import QScreen, QIcon
 
 import platform, os, time, shutil, stat, sys, subprocess, traceback
 import csv
@@ -63,7 +63,7 @@ class ORCAAnalysisSuite(QMainWindow):
     def initUI(self):
 
         #Set up GUI main window, define tab layout, and generate output text box 
-        self.setWindowTitle('ORCA Analysis Suite')
+        self.setWindowTitle('PodPals - Friends of the ORCA computational chemistry suite')
 
         #Dynamically adjust the size of the GUI window with the size of the user's screen
         #Get the primary screen's geometry
@@ -171,7 +171,7 @@ class ORCAAnalysisSuite(QMainWindow):
 
                 #Check if the command was successful
                 if result.returncode != 0:
-                    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error when obtaining the latest SHA value from the ORCA Analysis GUI GitHub repo (likely due to lack of an internet connection):\n{result.stderr}')
+                    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error when obtaining the latest SHA value from the PodPals GitHub repo (likely due to lack of an internet connection):\n{result.stderr}')
                     print(f'{datetime.now().strftime("[ %H:%M:%S ]")} If you have an internet connection, it is possible something intrinsic to the repository has been modifed. Pleaser re-clone the GitHub repo, then try to launch again from the updated files.')
                     return
 
@@ -180,7 +180,7 @@ class ORCAAnalysisSuite(QMainWindow):
                 return output[0] if output else None
             
             except Exception as e:
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An unknown error occurred when obtaining the latest SHA value from the ORCA Analysis GUI GitHub repo: {e}')
+                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An unknown error occurred when obtaining the latest SHA value from the PodPals GitHub repo: {e}')
                 print(f'Please report this error to the Issues section of the GitHub repo.')
                 return
 
@@ -230,7 +230,7 @@ class ORCAAnalysisSuite(QMainWindow):
         #root = os.getcwd()
 
         #URL of the MobCal-MPI repo
-        repo_url = 'https://github.com/HopkinsLaboratory/ORCA_Analysis_GUI'
+        repo_url = 'https://github.com/HopkinsLaboratory/PodPals/'
 
         #get SHA value of repo-ID
         repo_SHA = get_latest_commit_sha(repo_url)
@@ -243,12 +243,12 @@ class ORCAAnalysisSuite(QMainWindow):
                 file_content = file_content.strip()
     
         except FileNotFoundError:
-            print(f'{os.path.basename(ID_file)} could not be found in {os.path.dirname(ID_file)}. Please re-download from the ORCA Analysis GUI GitHub repo, and re-run the GUI launcher.')
+            print(f'{os.path.basename(ID_file)} could not be found in {os.path.dirname(ID_file)}. Please re-download from the PorPals GitHub repo, and re-run the GUI launcher.')
             return
 
         #Check if the file is in the correct format
         if '\n' in file_content or '\r' in file_content or ' ' in file_content:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {ID_file} is not in the correct format. Please re-download this file from the ORCA Analysis GUI GitHub repo and re-run the GUI launcher.')
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {ID_file} is not in the correct format. Please re-download this file from the PodPals GitHub repo and re-run the GUI launcher.')
             return
 
         local_SHA = file_content.strip()            
@@ -263,7 +263,7 @@ class ORCAAnalysisSuite(QMainWindow):
                     print('Please delete this manually. You can continue to use the GUI whether the /temp folder is deleted or not.')
                     pass
             
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The ORCA Analysis GUI is up to date! Please report any unhandled/unclear errors to the issues section of the GitHub repository.')
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} PodPals is up to date! Please report any unhandled/unclear errors to the issues section of the GitHub repository.')
 
         else:
             choice_title = 'Update available!'
@@ -397,6 +397,7 @@ class CosineSimTab(QWidget):
         directory_layout = QHBoxLayout()
 
         self.directory_input = QLineEdit()
+        self.directory_input.setPlaceholderText('/dir or /dir/file.csv containing files to be sorted')
 
         browse_dir_button = QPushButton('Browse dir')
         browse_dir_button.clicked.connect(self.browse_directory)
@@ -472,7 +473,7 @@ class CosineSimTab(QWidget):
 
         #Input validation
         if not os.path.isdir(input_path) and not os.path.isfile(input_path):
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {input_path} is not a valid directory or file. Please check that  you have specified is file/location that exists, then try again.')
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {input_path} is not a valid directory or file. Please check that you have specified is file/location that exists, then try again.')
             return
         
         #Check that the .csv is the correct format
@@ -496,7 +497,6 @@ class CosineSimTab(QWidget):
                     #Check each row
                     for row in reader:
                         row_count += 1
-
                         if len(row) != 3:
                             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} CSV headers do not match the expected format. Please extract the crest_conformers.xyz file using the CREST .xyz splitter function in this GUI, then provide the Energies.csv generated as an input here.')
                             return
@@ -504,7 +504,7 @@ class CosineSimTab(QWidget):
                         filename, energy, relative_energy = row
 
                         #Check filename format
-                        if not filename.lower().endswith('.gjf') or not filename.lower().endswith('.inp') or not filename.lower().endswith('.xyz'):
+                        if not filename.lower().endswith('.gjf') and not filename.lower().endswith('.inp') and not filename.lower().endswith('.xyz'):
                             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} All filenames in the .csv must end with either .gjf, .xyz, or .inp. Please extract the crest_conformers.xyz file using the CREST .xyz splitter function in this GUI, then provide the Energies.csv generated as an input here.')
                             return
 
@@ -569,6 +569,7 @@ class Generate_ORCAInputTab(QWidget):
         
         directory_label = QLabel('Directory:')
         self.directory_input = QLineEdit()
+        self.directory_input.setPlaceholderText('/path/to/dir with .gjf, .xyz, and/or .inp files for conversion')
         directory_button = QPushButton('Browse')
         directory_button.clicked.connect(self.browse_directory)
 
@@ -685,7 +686,7 @@ class Generate_ORCAInputTab(QWidget):
 
         #Run button
         run_button = QPushButton('Run')
-        run_button.clicked.connect(self.run_gjf_to_orca_input)
+        run_button.clicked.connect(self.run_gen_orca_input)
 
         layout.addWidget(run_button)
         layout.addStretch(1)
@@ -695,10 +696,10 @@ class Generate_ORCAInputTab(QWidget):
     
     def update_calc_line(self, index):
         if index == 0:  #DFT
-            self.calc_line_input.setText("! wB97X-D3 TightOpt Freq def2-TZVPP def2/J RIJCOSX TightSCF defgrid3 CHELPG")
+            self.calc_line_input.setText('! wB97X-D3 TightOpt Freq def2-TZVPP def2/J RIJCOSX TightSCF defgrid3')
             self.calc_line_input.setReadOnly(True)
         elif index == 1:  #CCSDT
-            self.calc_line_input.setText("! DLPNO-CCSD(T) def2-TZVPP def2-TZVP/C VeryTightSCF")
+            self.calc_line_input.setText('! DLPNO-CCSD(T) def2-TZVPP def2-TZVP/C VeryTightSCF')
             self.calc_line_input.setReadOnly(True)
         else:  #Custom
             self.calc_line_input.setReadOnly(False)
@@ -707,22 +708,27 @@ class Generate_ORCAInputTab(QWidget):
         self.grid_input.setEnabled(state == 2)
         self.rmax_input.setEnabled(state == 2)
 
-        #Check if the ESP charges checkbox is checked
-        if state == 2:  #Qt.Checked state is 2
-            current_text = self.calc_line_input.text()
-            
-            #Check if 'CHELPG' or 'chelpg' is not in the current method line if the box is checked. If it's not, add it. 
-            if 'CHELPG' not in current_text.upper():  
+        current_text = self.calc_line_input.text()
+        updated_text = current_text
+
+        if state == 2:  #If the ESP charges checkbox is checked Ensure 'CHELPG' is added only once and at the end
+            if not 'CHELPG' in current_text.upper():
                 updated_text = f'{current_text.strip()} CHELPG'
-                self.calc_line_input.setText(updated_text)
-    
+            
+        else: #If the ESP charges checkbox is unchecked, remove CHELPG from the calc line if its found
+            current_text = ' '.join([word for word in current_text.split() if word.upper() != 'CHELPG'])
+            updated_text = current_text.strip()
+
+        #Update calc line in GUI interface
+        self.calc_line_input.setText(updated_text)
+
     def browse_directory(self):
         directory_path = QFileDialog.getExistingDirectory(self, 'Select Directory')
 
         if directory_path:
             self.directory_input.setText(directory_path)
 
-    def run_gjf_to_orca_input(self):
+    def run_gen_orca_input(self):
         #Gather input values from the GUI
         directory = self.directory_input.text()
         mpp = self.mpp_input.value()
@@ -766,6 +772,26 @@ class Generate_ORCAInputTab(QWidget):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The entry for the method cannot be empty.')
             return
 
+        #ensure that chelpg is specified only once in the input line
+        words = calc_line.split()
+        chelpg_count = 0
+        new_calc_line = []
+
+        for word in words:
+            #Convert word to uppercase for a case-insensitive match w/ CHELPG
+            if word.upper() == 'CHELPG':
+                chelpg_count += 1
+                
+                if chelpg_count > 1:  #Skip adding 'CHELPG' if it was already found
+                    continue
+            
+            new_calc_line.append(word)
+        
+        # Rebuild the updated string, stripping the placeholder if never used
+        if chelpg_count > 1:
+            calc_line = ' '.join(new_calc_line)
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} WARNING: You have CHELPG written more than once in your method line! Removing all extra instances except the first. The new calc line is:\n{calc_line}')
+       
         if len(calc_line.split()) <= 3:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} WARNING: Your method seems rather short. Your input files will be created, but please double-check that have have requested an appropriate method using proper syntax, and that you did not forget any keywords.')
 
@@ -785,6 +811,7 @@ class ORCAOut_ORCAInputTab(QWidget):
         directory_layout = QHBoxLayout()
         directory_label = QLabel('Directory:')
         self.directory_input = QLineEdit()
+        self.directory_input.setPlaceholderText('/path/to/dir with .out files for conversion')
         directory_button = QPushButton('Browse')
         directory_button.clicked.connect(self.browse_directory)
 
@@ -925,14 +952,19 @@ class ORCAOut_ORCAInputTab(QWidget):
         self.grid_input.setEnabled(state == 2)
         self.rmax_input.setEnabled(state == 2)
 
-        #Check if the ESP charges checkbox is checked
-        if state == 2:  #Qt.Checked state is 2
-            current_text = self.calc_line_input.text()
-            
-            #Check if 'CHELPG' or 'chelpg' is not in the current text if the box is checked. If it's not, add it. 
-            if 'CHELPG' not in current_text.upper():  
+        current_text = self.calc_line_input.text()
+        updated_text = current_text
+
+        if state == 2:  #If the ESP charges checkbox is checked Ensure 'CHELPG' is added only once and at the end
+            if not 'CHELPG' in current_text.upper():
                 updated_text = f'{current_text.strip()} CHELPG'
-                self.calc_line_input.setText(updated_text)
+            
+        else: #If the ESP charges checkbox is unchecked, remove CHELPG from the calc line if its found
+            current_text = ' '.join([word for word in current_text.split() if word.upper() != 'CHELPG'])
+            updated_text = current_text.strip()
+
+        #Update calc line in GUI interface
+        self.calc_line_input.setText(updated_text)
     
     def browse_directory(self):
         directory_path = QFileDialog.getExistingDirectory(self, 'Select Directory')
@@ -989,6 +1021,26 @@ class ORCAOut_ORCAInputTab(QWidget):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The entry for the method cannot be empty.')
             return
 
+        #ensure that chelpg is specified only once in the input line
+        words = calc_line.split()
+        chelpg_count = 0
+        new_calc_line = []
+
+        for word in words:
+            #Convert word to uppercase for a case-insensitive match w/ CHELPG
+            if word.upper() == 'CHELPG':
+                chelpg_count += 1
+                
+                if chelpg_count > 1:  #Skip adding 'CHELPG' if it was already found
+                    continue
+            
+            new_calc_line.append(word)
+        
+        # Rebuild the updated string, stripping the placeholder if never used
+        if chelpg_count > 1:
+            calc_line = ' '.join(new_calc_line)
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} WARNING: You have CHELPG written more than once in your method line! Removing all extra instances except the first. The new calc line is:\n{calc_line}')
+        
         if len(calc_line.split()) <= 3:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} WARNING: Your method seems rather short. Your input files will be created, but please double-check that have have requested an appropriate method using proper syntax, and that you did not forget any keywords.')
 
@@ -1008,7 +1060,7 @@ class ORCAOut_ORCA_TDDFT_Tab(QWidget):
         directory_layout = QHBoxLayout()
         directory_label = QLabel('Directory:')
         self.directory_input = QLineEdit()
-        self.directory_input.setPlaceholderText('Must contain .hess and .out files w/ the same basename')
+        self.directory_input.setPlaceholderText("/path/to/dir with .out AND .hess files (same basename req'd)")
         directory_button = QPushButton('Browse')
         directory_button.clicked.connect(self.browse_directory)
 
@@ -1177,6 +1229,7 @@ class ORCA_Optim_plot_Tab(QWidget):
         directory_layout.addWidget(directory_label)
 
         self.file_input = QLineEdit()
+        self.file_input.setPlaceholderText('/path/to/file.out for analysis of its opt trajectory')
         directory_layout.addWidget(self.file_input)
 
         browse_button = QPushButton('Browse')
@@ -1243,6 +1296,7 @@ class DFTThermochemTab(QWidget):
 
         directory_label = QLabel('Directory:')
         self.directory_input = QLineEdit()
+        self.directory_input.setPlaceholderText("path to dir with .out files (`freq` keyword req'd)")
         browse_button = QPushButton('Browse')
         browse_button.clicked.connect(self.browse_directory)
         
@@ -1261,21 +1315,22 @@ class DFTThermochemTab(QWidget):
         self.temp_input.setRange(0.0, 100000.0)
         self.temp_input.setSingleStep(10)
         self.temp_input.setValue(298.15)
-        self.temp_input.setMinimumWidth(60)  
+        self.temp_input.setMinimumWidth(80)  
         
         pressure_label = QLabel('Pressure (Pa):')
         self.pressure_input = QDoubleSpinBox()
         self.pressure_input.setRange(0.0, 100000000.0) 
         self.pressure_input.setSingleStep(100)    
         self.pressure_input.setValue(100000.0)
-        self.pressure_input.setMinimumWidth(60)      
+        self.pressure_input.setMinimumWidth(80)      
 
         vib_scaling_label = QLabel('Vib. Scaling Factor:')
         self.vib_scaling_input = QDoubleSpinBox()
-        self.vib_scaling_input.setRange(0, 10)  
-        self.vib_scaling_input.setSingleStep(0.01)    
-        self.vib_scaling_input.setValue(1.00)
-        self.vib_scaling_input.setMinimumWidth(60)        
+        self.vib_scaling_input.setDecimals(4)
+        self.vib_scaling_input.setRange(0.0001, 2.0000)  
+        self.vib_scaling_input.setSingleStep(0.0005)    
+        self.vib_scaling_input.setValue(1.0000)
+        self.vib_scaling_input.setMinimumWidth(80)        
 
         temp_pressure_vib_layout.addWidget(temp_label)
         temp_pressure_vib_layout.addWidget(self.temp_input)
@@ -1368,6 +1423,7 @@ class CoupledClusterTab(QWidget):
 
         directory_label = QLabel('Directory:')
         self.directory_input = QLineEdit()
+        self.directory_input.setPlaceholderText('/path/to/dir with coupled cluster .out files')
         
         directory_layout.addWidget(directory_label)
         directory_layout.addWidget(self.directory_input)
@@ -1419,6 +1475,7 @@ class Extract_IR_SpectraTab(QWidget):
         
         directory_label = QLabel('Directory:')
         self.directory_input = QLineEdit()
+        self.directory_input.setPlaceholderText("path to dir with .out files (`freq` keyword req'd)")
         
         browse_button = QPushButton('Browse')
         browse_button.clicked.connect(self.browse_directory)
@@ -1587,7 +1644,7 @@ class Extract_TDDFT_VG_SpectraTab(QWidget):
         directory_layout.addWidget(directory_label)
         
         self.directory_input = QLineEdit()
-        self.directory_input.setPlaceholderText('Directory containing your .spectrum.rootN and/or .spectrum files.')
+        self.directory_input.setPlaceholderText('/path/to/dir containing .spectrum.rootN and/or .spectrum files from ESD calcs.')
         directory_layout.addWidget(self.directory_input)
         
 
@@ -1699,7 +1756,7 @@ class Extract_TDDFT_VG_SpectraTab(QWidget):
         basename_layout = QHBoxLayout()
         output_file_label = QLabel('Output basename:')
         self.output_file_input = QLineEdit()
-        self.output_file_input.setPlaceholderText('Enter a basename for the .xlsx and/or png output files.')
+        self.output_file_input.setPlaceholderText('Basename for the .xlsx and/or .png output files (no path required)')
         
         basename_layout.addWidget(output_file_label)
         basename_layout.addWidget(self.output_file_input)
@@ -1752,18 +1809,19 @@ class Extract_TDDFT_VG_SpectraTab(QWidget):
         if directory_path:
             self.directory_input.setText(directory_path)
     
-    #update output interpolation range depending on selection of the output unit
+    #update output interpolation range depending on selection of the output unit - reccomended output values reflect the entire Uv-Vis window (150 nm - 700 nm)
+    #these defaults can be adjusted to whatever you routinely work with.
     def update_output_values(self, unit):
         if unit == 'nm':
             self.output_lower_input.setValue(150)
-            self.output_upper_input.setValue(400)
+            self.output_upper_input.setValue(700)
             self.output_spacing_input.setValue(1)
         elif unit == 'cm**-1':
-            self.output_lower_input.setValue(25000)
+            self.output_lower_input.setValue(14000)
             self.output_upper_input.setValue(67000)
             self.output_spacing_input.setValue(50)
         elif unit == 'eV':
-            self.output_lower_input.setValue(3.1)
+            self.output_lower_input.setValue(1.8)
             self.output_upper_input.setValue(8.3)
             self.output_spacing_input.setValue(0.05)
         
@@ -1859,7 +1917,7 @@ class BWCCS_Tab(QWidget):
 
         thermochem_label = QLabel('DFT Thermochem .csv:')
         self.thermochem_input = QLineEdit()
-        self.thermochem_input.setPlaceholderText('Directory + name of .csv file containing DFT electronic energies and thermochemistry.') 
+        self.thermochem_input.setPlaceholderText('/path/to/file.csv w/ E_elec & thermochem (see T7)') 
         
         self.browse_button_thermochem = QPushButton('Browse')
         self.browse_button_thermochem.clicked.connect(self.browse_thermochem_file)
@@ -1876,7 +1934,7 @@ class BWCCS_Tab(QWidget):
 
         coupled_cluster_label = QLabel('Coupled cluster .csv:')
         self.coupled_cluster_input = QLineEdit()
-        self.coupled_cluster_input.setPlaceholderText('(Optional) Directory + name of .csv file containing coupled cluster energies.') 
+        self.coupled_cluster_input.setPlaceholderText('(Optional) /path/to/file.csv w/ coupled cluster energies (see T8)') 
 
         self.browse_button_coupled_cluster = QPushButton('Browse')
         self.browse_button_coupled_cluster.clicked.connect(self.browse_coupled_cluster_file)
@@ -1893,7 +1951,7 @@ class BWCCS_Tab(QWidget):
 
         CCS_label = QLabel('CCS .csv:')
         self.CCS_input = QLineEdit()
-        self.CCS_input.setPlaceholderText('Directory + name of .csv file containing CCSs computed from MobCal-MPI 2.0') 
+        self.CCS_input.setPlaceholderText('/path/to/file.csv w/ CCSs from MobCal-MPI 2.0') 
 
         self.browse_button_CCS = QPushButton('Browse')
         self.browse_button_CCS.clicked.connect(self.browse_CCS_file)
@@ -1910,7 +1968,7 @@ class BWCCS_Tab(QWidget):
 
         output_label = QLabel('Output .xlsx:')
         self.output_input = QLineEdit()
-        self.output_input.setPlaceholderText('Directory + name of a .xlsx to write the data to') 
+        self.output_input.setPlaceholderText('/path/to/file.xlsx to write output data (new file)') 
 
         output_layout.addWidget(output_label)
         output_layout.addWidget(self.output_input)
@@ -2032,13 +2090,31 @@ class LED_Analysis_Tab(QWidget):
 
     def initUI(self):
         layout = QVBoxLayout(self)
-        
+
+        #Parent-LED .out file input
+        Parent_LED_layout = QHBoxLayout()  
+
+        Parent_LED_label = QLabel('Parent LED .out:')
+        self.Parent_LED_input = QLineEdit()
+        self.Parent_LED_input.setPlaceholderText('/path/to/file.out of the parent complex (`LED` keyword)') 
+
+        self.browse_button_Parent_LED = QPushButton('Browse')
+        self.browse_button_Parent_LED.clicked.connect(self.browse_Parent_LED_file)
+
+        Parent_LED_layout.addWidget(Parent_LED_label)
+        Parent_LED_layout.addSpacing(5)
+        Parent_LED_layout.addWidget(self.Parent_LED_input)
+        Parent_LED_layout.addWidget(self.browse_button_Parent_LED)
+
+        layout.addLayout(Parent_LED_layout)
+        layout.addSpacing(5)    
+
         #DLPNO-CCSD(T) of Fragment 1 .out file inputs
         frag1_layout = QHBoxLayout()  
 
         frag1_label = QLabel('Fragment-1 .out:')
         self.frag1_input = QLineEdit()
-        self.frag1_input.setPlaceholderText('dir + filename of the DLPNO-CCSD(T) .out for Fragment 1 from the LED job.') 
+        self.frag1_input.setPlaceholderText('/path/to/file.out for DLPNO-CCSD(T) SPE of Fragment-1') 
         
         self.browse_button_frag1 = QPushButton('Browse')
         self.browse_button_frag1.clicked.connect(self.browse_frag1_file)
@@ -2055,7 +2131,7 @@ class LED_Analysis_Tab(QWidget):
 
         frag2_label = QLabel('Fragment-2 .out:')
         self.frag2_input = QLineEdit()
-        self.frag2_input.setPlaceholderText('dir + filename of the DLPNO-CCSD(T) .out for Fragment 2 from the LED job.') 
+        self.frag2_input.setPlaceholderText('/path/to/file.out for DLPNO-CCSD(T) SPE of Fragment-2') 
         
         self.browse_button_frag2 = QPushButton('Browse')
         self.browse_button_frag2.clicked.connect(self.browse_frag2_file)
@@ -2065,24 +2141,6 @@ class LED_Analysis_Tab(QWidget):
         frag2_layout.addWidget(self.browse_button_frag2)
 
         layout.addLayout(frag2_layout)
-        layout.addSpacing(5)    
-
-        #Parent-LED .out file input
-        Parent_LED_layout = QHBoxLayout()  
-
-        Parent_LED_label = QLabel('Parent LED .out:')
-        self.Parent_LED_input = QLineEdit()
-        self.Parent_LED_input.setPlaceholderText('dir + filename of the .out file for the LED job of the parent molecule.') 
-
-        self.browse_button_Parent_LED = QPushButton('Browse')
-        self.browse_button_Parent_LED.clicked.connect(self.browse_Parent_LED_file)
-
-        Parent_LED_layout.addWidget(Parent_LED_label)
-        Parent_LED_layout.addSpacing(5)
-        Parent_LED_layout.addWidget(self.Parent_LED_input)
-        Parent_LED_layout.addWidget(self.browse_button_Parent_LED)
-
-        layout.addLayout(Parent_LED_layout)
         layout.addSpacing(10)    
 
         #Run Button
@@ -2095,47 +2153,47 @@ class LED_Analysis_Tab(QWidget):
         layout.setContentsMargins(30, 30, 30, 30)  
         self.setLayout(layout)
 
+    def browse_Parent_LED_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, 'Select .out file', '', 'OUT Files (*.out)')
+
+        #Check if a file path was selected
+        if file_path:
+            self.Parent_LED_input.setText(file_path)
+
     def browse_frag1_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, 'Select .csv file', '', 'CSV Files (*.csv)')
+        file_path, _ = QFileDialog.getOpenFileName(self, 'Select .out file', '', 'OUT Files (*.out)')
 
         #Check if a file path was selected
         if file_path:
             self.frag1_input.setText(file_path)
     
     def browse_frag2_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, 'Select .csv file', '', 'CSV Files (*.csv)')
+        file_path, _ = QFileDialog.getOpenFileName(self, 'Select .out file', '', 'OUT Files (*.out)')
 
         #Check if a file path was selected
         if file_path:
             self.frag2_input.setText(file_path)
 
-    def browse_Parent_LED_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, 'Select .csv file', '', 'CSV Files (*.csv)')
-
-        #Check if a file path was selected
-        if file_path:
-            self.Parent_LED_input.setText(file_path)
-
     def run_LED(self):
         
         #get parameters from GUI interface and assign them to variables
-        frag1_file = self.frag1_input()
-        frag2_file = self.frag2_input()
-        Parent_LED_file = self.Parent_LED_input()
+        Parent_LED_file = self.Parent_LED_input.text()
+        frag1_file = self.frag1_input.text()
+        frag2_file = self.frag2_input.text()
 
         #check that data provided in the GUI is correctly set up
-        if not os.path.isfile(frag1_file):
+        if not os.path.isfile(Parent_LED_file):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {Parent_LED_file} is not a valid file. Please check that the directory you have specified is correct, then try again.')
+        
+        elif not os.path.isfile(frag1_file):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {frag1_file} is not a valid file. Please check that the directory you have specified is correct, then try again.')
 
         elif not os.path.isfile(frag2_file):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {frag2_file} is not a valid file. Please check that the directory you have specified is correct, then try again.')
 
-        elif not os.path.isfile(Parent_LED_file):
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {Parent_LED_file} is not a valid file. Please check that the directory you have specified is correct, then try again.')
-
         #if all checks pass, proceed to extract spectra
         else:
-            LED_Analysis(frag1_file, frag2_file, Parent_LED_file, output_file = 'LED_Analysis.csv')
+            LED_Analysis(Parent_LED_file, frag1_file, frag2_file)
 
 class NEB_Analysis_Tab(QWidget):
     def __init__(self, text_redirector, parent=None):

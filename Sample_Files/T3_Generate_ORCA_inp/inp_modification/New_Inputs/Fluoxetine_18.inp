@@ -1,17 +1,7 @@
-! wB97X-D3 TightOpt Freq def2-TZVPP def2/J RIJCOSX TightSCF defgrid3
-%maxcore 3500
+! DLPNO-CCSD(T) def2-TZVPP def2-TZVP/C VeryTightSCF
+%maxcore 3400
 
 %pal nprocs 8 
-end
-
-%geom
-Calc_Hess true
-end
-
-%elprop
-Dipole true
-Quadrupole true
-Polar 1
 end
 
 *xyz 1 1

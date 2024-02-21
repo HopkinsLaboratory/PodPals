@@ -1,0 +1,7 @@
+! wB97X-D3 TightOpt Freq def2-TZVPP def2/J RIJCOSX TightSCF defgrid3
+%maxcore 3400
+
+%pal nprocs 8 
+end
+
+*xyzfile 1 1 Fluoxetine_17.xyz

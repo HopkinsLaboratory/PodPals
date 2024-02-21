@@ -2,6 +2,7 @@ import os, re, time
 import numpy as np
 import pandas as pd
 from datetime import datetime
+from PyQt6.QtWidgets import QApplication
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -85,6 +86,9 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, nor
     if len(filenames) == 0:
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} There are no .out files in the provided directory.')
         return
+
+    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Starting extraction of IR spectra from {len(filenames)} ORCA .out files...')
+    QApplication.processEvents()
 
     stime = time.time()
 

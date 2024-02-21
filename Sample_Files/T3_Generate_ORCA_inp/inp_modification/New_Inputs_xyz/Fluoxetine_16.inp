@@ -1,0 +1,7 @@
+! DLPNO-CCSD(T) def2-TZVPP def2-TZVP/C VeryTightSCF
+%maxcore 3400
+
+%pal nprocs 8 
+end
+
+*xyzfile 1 1 Fluoxetine_16.xyz

@@ -7,14 +7,14 @@ from PyQt6.QtWidgets import QApplication
 def xyz_file_splitter(file, basename, export_type):
     
     #Error handling for invalid files and/or files without a .xyz extension
-    if not os.path.isfile(file):
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {os.path.basename(file)} does not exist in the path specified.')
-        return
-
-    #Error handling for invalid files and/or files without a .xyz extension
     if not file.endswith('.xyz'):
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {os.path.basename(file)} is not a .xyz file. Please provide a file with the correct extension.')
         return
+    
+    #Error handling for invalid files and/or files without a .xyz extension
+    if not os.path.isfile(file):
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {os.path.basename(file)} does not exist in the path specified.')
+        return    
     
     #Error handling to check that the requesting format to write the extracted geoms to is supported
     if not export_type in ['inp', 'gjf', 'xyz']:
@@ -69,7 +69,7 @@ def xyz_file_splitter(file, basename, export_type):
         #write to specified file type
         with open(export_file_path, 'w') as opf:
             if export_type == 'gjf':
-                opf.writelines(['#opt\n\n', f'{filename_prefix}_{i}\n\n', '1 1\n'])  #Header with default charge and multiplicity
+                opf.writelines(['#opt pm7\n\n', f'{filename_prefix}_{i}\n\n', '1 1\n'])  #Header with default charge and multiplicity
                 opf.writelines('\n'.join(geom_lines) + '\n\n')  #Conformer geometry
             
             elif export_type == 'xyz':
@@ -77,8 +77,8 @@ def xyz_file_splitter(file, basename, export_type):
                 opf.writelines('\n'.join(geom_lines) + '\n\n')  #Conformer geometry
 
             elif export_type == 'inp':
-                opf.writelines(['#! Opt\n', '%maxcore 1000\n\n', '%pal nprocs 1\nend\n\n', '* xyz 1 1\n'])  #Header with default charge and multiplicity
-                opf.writelines('\n'.join(geom_lines) + '*\n\n\n')  #Conformer geometry
+                opf.writelines(['! PM3 Opt Def2-SVP\n', '%maxcore 1000\n\n', '%pal nprocs 1\nend\n\n', '* xyz 1 1\n'])  #Header with default charge and multiplicity
+                opf.writelines('\n'.join(geom_lines) + '\n*\n\n\n')  #Conformer geometry
 
         #Append filename and energy data to the pandas df
         df_energies = pd.concat([df_energies, pd.DataFrame([{'Filename': f'{filename_prefix}_{i}.{export_type}', 'Energy / hartree': energy}])], ignore_index=True)

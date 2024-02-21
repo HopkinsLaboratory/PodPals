@@ -1,4 +1,4 @@
-Description,Value (kJ/mol)
+Parameter,Interaction energy (kJ/mol)
 E_int,-0.07367952
 E_int (check),-193.44555285
 E_elprep(HF),+345.01326640

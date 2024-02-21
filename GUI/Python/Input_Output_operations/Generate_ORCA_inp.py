@@ -19,13 +19,13 @@ def Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, e
     if write_xyz_checked:
         new_dir = os.path.join(directory, 'New_Inputs_xyz')
 
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Starting conversion of {num_files} .gjf files to ORCA .inp files.\nORCA .inp and .xyz files will be written to {os.path.basename(new_dir)} ...')
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Starting conversion of {num_files} files to ORCA .inp files.ORCA .inp and .xyz files will be written to {os.path.basename(new_dir)} ...')
         QApplication.processEvents()
         
     else: 
         new_dir = os.path.join(directory, 'New_Inputs')
 
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Starting conversion of {num_files} .gjf files to ORCA .inp files.\nORCA .inp files will be written to {os.path.basename(new_dir)} ...')
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Starting conversion of {num_files} files to ORCA .inp files.ORCA .inp files will be written to {os.path.basename(new_dir)} ...')
         QApplication.processEvents()
 
     os.makedirs(new_dir, exist_ok=True)  #Create the directory if it doesn't exist

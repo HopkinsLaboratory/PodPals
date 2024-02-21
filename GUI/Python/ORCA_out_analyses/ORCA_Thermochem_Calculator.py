@@ -232,11 +232,11 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
     header = '{},\n'.format(','.join(['{:<25}'] * len(properties)))
 
     #Create output file and write header to it, ensuring that previous files of the same name are not overwritten
-    output_csv = os.path.join(directory, f'Thermo_data_{int(T)}K_{int(p/1000)}kPa_{str(vib_scl).replace(".","-")}vibscl.csv')
+    output_csv = os.path.join(directory, f'Thermo_data_{int(T)}K_{int(p)}Pa_{str(np.round(vib_scl, 4)).replace(".","-")}vibscl.csv')
 
     i = 2
     while os.path.isfile(output_csv):
-        output_csv = os.path.join(directory, f'Thermo_data_{int(T)}K_{int(p)}Pa_{str(vib_scl).replace(".","-")}vibscl_{i}.csv')
+        output_csv = os.path.join(directory, f'Thermo_data_{int(T)}K_{int(p)}Pa_{str(np.round(vib_scl, 4)).replace(".","-")}vibscl_{i}.csv')
         i += 1
     
     try:
@@ -374,7 +374,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         for filename, imag_freq in master_imag_freq_list:
             print(f'{filename}: {imag_freq}')
 
-    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Electronic energies and thermochemistry from {len(filenames)} ORCA .out files have been processed in {np.round(time.time() - start,2)} seconds.')
+    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Electronic energies, thermochemistry, and molecular properties have been extracted from {len(filenames)} ORCA .out files in {np.round(time.time() - start,2)} seconds.')
 
 #external testing
 if __name__ == "__main__":

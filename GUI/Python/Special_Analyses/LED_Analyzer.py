@@ -4,7 +4,9 @@ import matplotlib.pyplot as plt
 import csv
 from datetime import datetime
 
-def LED_Analysis(fragment1, fragment2, parent, output_csv):
+def LED_Analysis(parent, fragment1, fragment2):
+
+    output_csv = os.path.join(os.path.dirname(parent), 'LED_Analysis.csv')
 
     #Constants
     J2Eh = 1 / (4.3597447222071e-18)  #Joule to Hartree conversion
@@ -25,11 +27,13 @@ def LED_Analysis(fragment1, fragment2, parent, output_csv):
             elif line.startswith('FINAL SINGLE POINT ENERGY'):
                 E_tot = float(line.split()[-1])
 
-        if all(E_tot, E_C_tot, E_C_T) is not None:
+        if all(x is not None for x in [E_tot, E_C_tot, E_C_T]):
             E_C_CCSD = E_C_tot - E_C_T
             E_ref = E_tot - E_C_tot
+            return E_ref, E_C_CCSD, E_C_T
         
-        return E_ref, E_C_CCSD, E_C_T
+        else:
+            return None, None, None
 
     def parse_LED_file(file):
         with open(file) as f:
@@ -56,9 +60,13 @@ def LED_Analysis(fragment1, fragment2, parent, output_csv):
             elif line.startswith('Non dispersion (weak pairs)'):
                 E_nondisp += float(line.split()[-1])
 
-        return E_tot, E_XvY_ref, E_XvY_C, E_elstat, E_exch, E_disp, E_nondisp
+        if not any(x == 0.0 for x in [E_tot, E_XvY_ref, E_elstat, E_exch, E_disp, E_nondisp, E_XvY_ref, E_XvY_C]):
+            return E_tot, E_XvY_ref, E_XvY_C, E_elstat, E_exch, E_disp, E_nondisp
 
-    def print_summary(E_int, dE_elprep_ref, E_elstat, E_exch, E_disp, dE_nondisp_CCSD, dE_C_T, filename='LED_summary.csv'):
+        else:
+            return None, None, None, None, None, None, None
+        
+    def print_summary(E_int, dE_elprep_ref, E_elstat, E_exch, E_disp, dE_nondisp_CCSD, dE_C_T, output_csv):
         summary = [
             ('E_int', E_int),
             ('E_int (check)', (dE_elprep_ref + E_elstat + E_exch + E_disp + dE_nondisp_CCSD + dE_C_T) / J2Eh * N_Av * 1e-3),
@@ -70,21 +78,20 @@ def LED_Analysis(fragment1, fragment2, parent, output_csv):
             ('E_trip', dE_C_T / J2Eh * N_Av * 1e-3)
         ]
 
-        with open(filename, 'w', newline='') as file:
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The LED analysis has completed:')
+        with open(output_csv, 'w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(['Description', 'Value (kJ/mol)'])  #Header row
+            writer.writerow(['Parameter', 'Interaction energy (kJ/mol)'])
 
             for desc, value in summary:
                 print(f'{desc:15s} = {value:+.8f} kJ/mol')
                 writer.writerow([desc, f'{value:+.8f}'])
 
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} LED summary has been written to {filename}')
-
     def plot_summary(Es, output):
         x1 = np.arange(1,8)
         plt.figure()
         off = np.max(Es) * 0.05
-        plt.title('LED for ' + label)
+        plt.title(f'LED Analysis')
 
         plt.bar(x1, Es, color='C0')
         for i, E in enumerate(Es):
@@ -98,29 +105,28 @@ def LED_Analysis(fragment1, fragment2, parent, output_csv):
         plt.xticks(*XXTicks)
         plt.tight_layout()
         plt.savefig(output, format='png', dpi=300, bbox_inches='tight')
-        plt.show()
 
-    def run_LED_analysis(F1_file, F2_file, LED_file, output_file):
+    def run_LED_analysis(F1_file, F2_file, LED_file, output_csv):
 
         #procress fragment-1 file
         F1_E_ref, F1_E_C_CCSD, F1_E_C_T = parse_Fi_file(F1_file)
 
-        if any(F1_E_ref, F1_E_C_CCSD, F1_E_C_T) is None:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} There was a problem extracting energies from {os.path.basename(F1_file)}. Did it finish correctly?')
+        if any(x is None for x in [F1_E_ref, F1_E_C_CCSD, F1_E_C_T]):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} There was a problem extracting energies from the fragment 1 file {os.path.basename(F1_file)}. Did it finish correctly?')
             return
 
         #procress fragment-2 file
         F2_E_ref, F2_E_C_CCSD, F2_E_C_T = parse_Fi_file(F2_file)
 
-        if any(F2_E_ref, F2_E_C_CCSD, F2_E_C_T) is None:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} There was a problem extracting energies from {os.path.basename(F2_file)}. Did it finish correctly?')
+        if any(x is None for x in [F2_E_ref, F2_E_C_CCSD, F2_E_C_T]):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} There was a problem extracting energies from the fragment 2 file {os.path.basename(F2_file)}. Did it finish correctly?')
             return
                     
         #process energies from LED file
         Ad_E_ref, Ad_E_C_CCSD, Ad_E_C_T = parse_Fi_file(LED_file)
 
-        if any(Ad_E_ref, Ad_E_C_CCSD, Ad_E_C_T) is None:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} There was a problem extracting energies from {os.path.basename(LED_file)}. Did it finish correctly?')
+        if any(x is None for x in [Ad_E_ref, Ad_E_C_CCSD, Ad_E_C_T]):
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} There was a problem extracting energies from the LED file {os.path.basename(LED_file)}. Did it finish correctly?')
             return
 
         #Process the LED section of the LED file
@@ -141,7 +147,7 @@ def LED_Analysis(fragment1, fragment2, parent, output_csv):
         dE_C_T = Ad_E_C_T - (F1_E_C_T + F2_E_C_T) #triplets contribution
 
         #Print Summary
-        print_summary(E_int, dE_elprep_ref, E_elstat, E_exch, E_disp, dE_nondisp_CCSD, dE_C_T, output_file)
+        print_summary(E_int, dE_elprep_ref, E_elstat, E_exch, E_disp, dE_nondisp_CCSD, dE_C_T, output_csv)
 
         #Plot Summary
         Es = np.array([dE_elprep_ref, E_elstat, E_exch, E_disp, dE_nondisp_CCSD, dE_C_T, E_int]) / J2Eh * N_Av * 1e-3  #Convert to kJ/mol
@@ -149,6 +155,8 @@ def LED_Analysis(fragment1, fragment2, parent, output_csv):
 
     #Main execution
     run_LED_analysis(fragment1, fragment2, parent, output_csv)
+    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} A summary has been written to {os.path.basename(output_csv)}.csv and {os.path.basename(output_csv)}.png')
+    return
 
 #external testing
 if __name__ == '__main__':

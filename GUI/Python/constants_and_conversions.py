@@ -139,4 +139,22 @@ def convert_energy(energy, input_unit, output_unit):
     else:
         raise ValueError(f'Conversion from {input_unit} to {output_unit} is not supported.')
 
+#external testing
+if __name__ == "__main__":
+    input_unit = 'nm'
+    output_unit = 'nm'
+
+    input_energy = 300 #nm
+    
+    shift_unit = 'eV'
+    shift_by = -0.25
+
+    inp_to_shift = convert_energy(input_energy, input_unit, shift_unit)
+    print(f'Input to shift unit: {input_energy} {input_unit} was converted to {inp_to_shift} {shift_unit}')
+
+    shifted_inp = inp_to_shift + shift_by
+    print(f' {inp_to_shift} {shift_unit} has been shifted to {shifted_inp} {shift_unit}')
+
+    conv_shifted_energy = convert_energy(shifted_inp, shift_unit, output_unit)
+    print(f'{input_energy} {input_unit} was shifted by {shift_by} {shift_unit} and coverted to {output_unit}, yielding a value of {conv_shifted_energy} {output_unit}.')
 
