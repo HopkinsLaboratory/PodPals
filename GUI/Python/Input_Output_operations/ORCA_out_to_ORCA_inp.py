@@ -29,7 +29,7 @@ def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line
 
     if write_gjf_checked:
         gjf_dir = os.path.join(new_dir, 'gjfs')
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} .gjf files will be written to {os.path.join(os.path.basename(new_dir), 'gjfs')}')
+        print(f"""{datetime.now().strftime("[ %H:%M:%S ]")} .gjf files will be written to {os.path.join(os.path.basename(new_dir), 'gjfs')}""")
         os.makedirs(gjf_dir, exist_ok=True) 
 
     start = time.time()

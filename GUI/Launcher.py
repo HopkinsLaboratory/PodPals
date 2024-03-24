@@ -1,3 +1,5 @@
+#! /usr/bin/python3
+
 #Import modules needed for preparation of GUI launch
 import importlib, platform, os, sys, shutil, subprocess
 from pathlib import Path

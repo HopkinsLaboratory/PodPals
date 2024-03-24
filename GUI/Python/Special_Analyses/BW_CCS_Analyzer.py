@@ -46,7 +46,7 @@ def BW_CCS_Analysis(dft_file_path, dlpno_file_path, ccs_file_path, output_file_p
         #Check if all required columns are present in the DataFrame
         missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {df_name} is missing the required columns: {', '.join(missing_columns)}')
+            print(f"""{datetime.now().strftime("[ %H:%M:%S ]")} {df_name} is missing the required columns: {', '.join(missing_columns)}""")
             return False
         
         else:
