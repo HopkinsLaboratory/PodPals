@@ -40,7 +40,7 @@ def extract_ESD_spectrum_root_files(directory, input_unit, shift_unit, output_un
         #Check that the dataframe has the expected headers
         required_columns = {'Energy', 'TotalSpectrum', 'IntensityFC', 'IntensityHT'}
         if not required_columns.issubset(data.columns):
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The header of {filename} does not contain the required columns: {', '.join(required_columns)}\n. Processing of this file will be skipped.')
+            print(f"""{datetime.now().strftime("[ %H:%M:%S ]")} The header of {filename} does not contain the required columns: {', '.join(required_columns)}\n. Processing of this file will be skipped.""")
             return None
         
         #Convert energy from input unit to shift unit, and apply the shift

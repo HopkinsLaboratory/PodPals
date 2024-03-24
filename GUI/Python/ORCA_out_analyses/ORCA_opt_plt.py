@@ -170,11 +170,11 @@ def ORCA_opt_plt(file, save_plot = False):
 
     if save_plot:
         #Write plot to file, ensuring that it doesn't overwrite a previous version
-        plt_file = os.path.join(os.path.dirname(file), f'{str(file).split('.out')[0]}.png')
+        plt_file = os.path.join(os.path.dirname(file), f"""{str(file).split('.out')[0]}.png""")
 
         i = 2 
         while os.path.isfile(plt_file):
-            plt_file = os.path.join(os.path.dirname(file), f'{str(file).split('.out')[0]}_v{1}.png')
+            plt_file = os.path.join(os.path.dirname(file), f"""{str(file).split('.out')[0]}_v{1}.png""")
             i += 1
 
         #save the plot and show it to the user
