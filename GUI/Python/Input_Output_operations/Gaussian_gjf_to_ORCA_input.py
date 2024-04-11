@@ -1,52 +1,45 @@
-import os, re, time
+import os
+import time
 import numpy as np
 from datetime import datetime
 from PyQt6.QtWidgets import QApplication
 
-def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, calc_hess_checked, polarization_checked, write_xyz_checked, write_gjf_checked):
+def Gaussian_gjf_to_ORCA_input(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, calc_hess_checked, polarization_checked, write_xyz_checked):
 
-    #Generate a list of .gjf files from the directory. Note that pseudopotentials write _atom##to the filename, so we filter these out. 
-    filenames = [x for x in os.listdir(directory) if x.lower().endswith('.out') and '_atom' not in x]
+    #Generate a list of .gjf files from the directory
+    filenames = [x for x in os.listdir(directory) if x.lower().endswith('.gjf') or x.lower().endswith('.inp')]
     num_files = len(filenames)
 
-    if num_files == 0:
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No .out files were found in {os.path.basename(directory)}.')
-        return
-    
-    #Generate the directory/directories to write new files to
+    #Generate a directory to write new files to
+
     if write_xyz_checked:
         new_dir = os.path.join(directory, 'New_Inputs_xyz')
 
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Starting conversion of {num_files} ORCA .out files to ORCA .inp files.\nORCA .inp and .xyz files will be written to {os.path.basename(new_dir)} ...')
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Starting conversion of {num_files} .gjf files to ORCA .inp files.\nORCA .inp and .xyz files will be written to {os.path.basename(new_dir)} ...')
         QApplication.processEvents()
         
     else: 
         new_dir = os.path.join(directory, 'New_Inputs')
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Starting conversion of {num_files} ORCA .out files to ORCA .inp files.\nORCA .inp and will be written to {os.path.basename(new_dir)} ...')
+
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Starting conversion of {num_files} .gjf files to ORCA .inp files.\nORCA .inp files will be written to {os.path.basename(new_dir)} ...')
         QApplication.processEvents()
 
-    os.makedirs(new_dir, exist_ok=True)  
-
-    if write_gjf_checked:
-        gjf_dir = os.path.join(new_dir, 'gjfs')
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} .gjf files will be written to {os.path.join(os.path.basename(new_dir), "gjfs")}')
-        os.makedirs(gjf_dir, exist_ok=True) 
+    os.makedirs(new_dir, exist_ok=True)  #Create the directory if it doesn't exist
 
     start = time.time()
-
-    #Error handling 
 
     #remove any leadng or trailing whitespace from the calc line
     calc_line = calc_line.strip()
 
-    #check is calc line begns wth a !
+    #Error handling for calc_line
+    #check if calc line begns wth a !
     if not calc_line.startswith('!'):
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The input line in {filename} does not start with a !')
-        calc_line = '! ' + calc_line
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The calc line does not start with a !')
+        calc_line = f'! {calc_line}'
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Fixing it now; the new calc line is:\n {calc_line}')
         QApplication.processEvents()
-
-   #Check for CHELPG or chelpg in the calc line if ESP charges are requested
+    
+    #Check for CHELPG or chelpg in the calc line if ESP charges are requested
     if esp_charges_checked and not 'chelpg' in calc_line.lower():
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} You have requested that ESP charges are calculcated, but CHELPG is not in the calulcation line. Adding it now.')
         calc_line = f'{calc_line} CHELPG'
@@ -61,7 +54,7 @@ def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line
         rmax = 3.0
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The ESP calculation block will be written to the .inp file with a grid size of {grid} angrstroms and a rmax of {rmax} angstroms.')
         QApplication.processEvents()
-        
+    
     #check that the memory allocated per core is an integer
     if not isinstance(mpp, int):
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The number of memory is not an integer. You cannot have fractional CPUs! Fixing it now')
@@ -78,28 +71,27 @@ def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line
 
     #Create ORCA files
     for filename in filenames:
+    
         #read and extract geometry from the .gjf files
         try:
-            #read and extract geometry from the .gjf files
             with open(os.path.join(directory, filename), 'r') as opf:
-                data = opf.read()
+                lines = opf.readlines()
 
         #If there is an error opening the .gjf file, infomr that user that it will be skipped.
         except IOError as e:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An error was encountered when trying to open {filename}: {e}.\n Processing of this file will be skipped.')
             QApplication.processEvents()
             continue
+    
+        geometry = []  #Initialize the geom list
 
-        #Get the geometry and write to a list called geometry
-        geometry = [] #Initialize the geometry list
-        XYZ_data = re.findall(r'CARTESIAN COORDINATES \(ANGSTROEM\)([\s\S]*?)CARTESIAN COORDINATES \(A.U.\)', data)
-
-        #Loop through each line in the FINAL geom block, split each line, then append to the geometry list
-        for line in XYZ_data[-1].split('\n')[2:-3]:
-            split_line = line.split()
+        for line in lines:
+            line = line.strip()
+            split_line = line.split() #split by whitespace
+            
             #the only entry with 4 splits, where instance 1 is an atom symbol (sometimes an atom number!), and a period in instances 1-3 will be the xyz coordiante lines. Write these to the geom list
             if len(split_line) == 4 and (split_line[0].isalpha() or split_line[0].isdigit()) and all('.' in x for x in split_line[1:3]):
-                geometry.append(split_line)
+                geometry.append(line.split())
 
         if not geometry:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No atomic coordinate data was found in {filename}. Processing of this file will be skipped.')
@@ -108,12 +100,12 @@ def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line
         
         #If geometry is extracted, start to write the ORCA .inp file
         else:
-
+            
             #Define the ORCA .inp filename
             orca_filename = os.path.join(new_dir, f'{filename[:-4]}.inp')
 
-            #Write the geometry to a formatted string
-            fs = '\n'.join([f'{i[0]:<5s}  {i[1]:>15s}  {i[2]:>15s}  {i[3]:>15s}' for i in geometry])
+            #write geom to a formatted string for printing to a file
+            fs = '\n'.join([f'{i[0]:<5s}  {i[1]:>15s}  {i[2]:>15s}  {i[3]:>15s}' for i in geometry])    
 
             #Write the ORCA .inp file
             with open(orca_filename, 'w') as opf:
@@ -164,23 +156,14 @@ def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line
                 #otherwise, write the geometry to the .inp
                 else:
                     opf.write(f'*xyz {charge} {multiplicity}\n{fs}\n*\n\n')
-        
-        #make the .gjf file
-        if write_gjf_checked: 
-            with open(os.path.join(gjf_dir, f'{filename[:-4]}.gjf'), 'w') as opf_gjf:
-                opf_gjf.write('#opt\n\n')
-                opf_gjf.write(f'{filename[:-4]}\n\n') #filename excluding its extenstion 
-                opf_gjf.write(f'{charge} {multiplicity}\n')
-                opf_gjf.write(fs)
-                opf_gjf.write('\n\n')
-   
-    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {num_files} ORCA .out files were converted to ORCA .inp files in {np.round(time.time() - start,2)} seconds.')
+
+    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {num_files} .gjf files were converted to ORCA .inp files in {np.round(time.time() - start,2)} seconds.')
     return
 
 #external testing
-if __name__ == '__main__':
+if __name__ == "__main__":
 
-    directory = r'D:\OneDrive\OneDrive - University of Waterloo\Waterloo\GitHub\ORCA_Analysis_GUI\Sample_Files\T4_ORCA_out_to_ORCA_inp'
+    directory = r'D:\OneDrive\OneDrive - University of Waterloo\Waterloo\GitHub\ORCA_Analysis_GUI\Sample_Files\T3_gjf_to_ORCA_inp\inp_modification'
     mpp = 3500
     ncores = 8
     charge = 1
@@ -188,10 +171,9 @@ if __name__ == '__main__':
     calc_line = '! wB97X-D3 TightOpt Freq def2-TZVPP def2/J RIJCOSX TightSCF defgrid3'
     esp_charges_checked = False
     grid = 0.1
-    rmax = 3.0
+    rmax = 0.3
     calc_hess_checked = True
     polarization_checked = True
     write_xyz_checked = False
-    write_gjf_checked = True
 
-    ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, calc_hess_checked, polarization_checked, write_xyz_checked, write_gjf_checked)
+    Gaussian_gjf_to_ORCA_input(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, calc_hess_checked, polarization_checked, write_xyz_checked)

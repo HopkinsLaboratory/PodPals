@@ -33,7 +33,7 @@ def ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, calc
        
     if write_gjf_checked:
         gjf_dir = os.path.join(new_dir, 'gjfs')
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} .gjf files will be written to {os.path.join(os.path.basename(new_dir), 'gjfs')}')
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} .gjf files will be written to {os.path.join(os.path.basename(new_dir), "gjfs")}')
         QApplication.processEvents()
 
         os.makedirs(gjf_dir, exist_ok=True) 
