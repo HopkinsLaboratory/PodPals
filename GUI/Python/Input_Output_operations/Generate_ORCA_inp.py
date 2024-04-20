@@ -1,4 +1,4 @@
-import os
+import os, re
 import time
 import numpy as np
 from datetime import datetime
@@ -90,12 +90,17 @@ def Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, e
         geometry = []  #Initialize the geom list
 
         for line in lines:
-            line = line.strip()
-            split_line = line.split() #split by whitespace
+            #Remove the contents within parentheses and any trailing whitespace - this is a thing for .pdb files created with Gaussview
+            if '(' or ')' in line:
+                clean_line = re.sub(r'\(.*?\)', '', line).strip()
+                split_line = clean_line.split()
+            else:
+                clean_line = line.strip()
+                split_line = clean_line.split()
             
             #the only entry with 4 splits, where instance 1 is an atom symbol (sometimes an atom number!), and a period in instances 1-3 will be the xyz coordiante lines. Write these to the geom list
             if len(split_line) == 4 and (split_line[0].isalpha() or split_line[0].isdigit()) and all('.' in x for x in split_line[1:3]):
-                geometry.append(line.split())
+                geometry.append(split_line)
 
         if not geometry:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No atomic coordinate data was found in {filename}. Processing of this file will be skipped.')
