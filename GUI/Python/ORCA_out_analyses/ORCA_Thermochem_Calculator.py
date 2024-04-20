@@ -18,7 +18,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         #Initialize variables and arrays
         charge, multi, Eelec, RotABC, sigma_OR, mass, m_SI = None, None, None, None, None, None, None
         total_dipole, dipole_x, dipole_y, dipole_z, polariz, dipole_ax = None, None, None, None, None, None
-        vibs_array, ZPE = None, None
+        vibs_array, ZPE, Total_ZPE = None, None, None
         n_imag = 0
         imag_freqs = None
 
@@ -312,9 +312,9 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         else:
             #Check if polariz is None and replace it with a placeholder if so
             polariz_value = 'N/A' if polariz is None else polariz
-            
-            values = [filename, -12345.0, Eelec, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, RotABC[0], RotABC[1], RotABC[2], sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, q_trans, q_rot, q_vib, q_elec]
-            
+            Gibbs_list.append(12345.0)
+            values = [filename, -12345.0, Eelec, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, RotABC[0], RotABC[1], RotABC[2], -12345.0, dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, -12345.0, -12345.0, -12345.0, -12345.0]
+        
         #Create a format string for consistent spacing, then write the data to the output.csv
         format_str = '{}'.format(','.join(['{:<25}'] * len(values)) + ',\n')
 
