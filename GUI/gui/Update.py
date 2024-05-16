@@ -31,8 +31,6 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function, ens
             QApplication.processEvents()
             return
 
-    #A handy dictionary to hold the paths of the files to be updated for subsequent looping. Syntax is as follows- Path to local file : Path to cloned GitHub file
-    if ensure_update:
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Ensuring that the local version of {os.path.join(root, "gui", "Update.py")} is up to date...')
         QApplication.processEvents()
         
@@ -49,6 +47,7 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function, ens
         #create a location to write a python script to update Update.py to the most recent version
         update_script_path = os.path.join(temp_dir, 'Allfiles_update.py')
 
+        #A handy dictionary to hold the paths of the files to be updated for subsequent looping. Syntax is as follows- Path to local file : Path to cloned GitHub file
         update_files = {
             str(os.path.join(top_dir, 'Sample_Files')): str(os.path.join(temp_dir, 'Sample_Files')), #Sample files to accompany to GUI
             str(os.path.join(top_dir, 'README.md')): str(os.path.join(temp_dir, 'README.md')), #GUI documentation
@@ -74,8 +73,8 @@ def Update_GUI_files(repo_url, root, ID_file, repo_SHA, delete_dir_function, ens
             str(os.path.join(root, 'Python', 'ORCA_out_analyses', 'extract_ESD_spectrum_files.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'ORCA_out_analyses', 'extract_ESD_spectrum_files.py')), #T10 - Extract & plot UV spectra from .spectrum files
         
             str(os.path.join(root, 'Python', 'Special_Analyses', 'BW_CCS_Analyzer.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'Special_Analyses', 'BW_CCS_Analyzer.py')), #T11 - Boltzmann-weighted CCS calculator
-            str(os.path.join(root, 'Python', 'Special_Analyses', 'LED_Analyzer.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'Special_Analyses', 'LED_Analyzer.py')), #T12 - ORCA LED analysis tool
-    }
+            str(os.path.join(root, 'Python', 'Special_Analyses', 'LED_Analyzer.py')): str(os.path.join(temp_dir, 'GUI', 'Python', 'Special_Analyses', 'LED_Analyzer.py')) #T12 - ORCA LED analysis tool
+        }
     
     #update process for Windows users
     if os.getenv('APPDATA') is not None:

@@ -497,11 +497,14 @@ class CosineSimTab(QWidget):
                     #Check each row
                     for row in reader:
                         row_count += 1
-                        if len(row) != 3:
-                            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} CSV headers do not match the expected format. Please extract the crest_conformers.xyz file using the CREST .xyz splitter function in this GUI, then provide the Energies.csv generated as an input here.')
-                            return
-
-                        filename, energy, relative_energy = row
+                        if row: #ignore empty lines
+                            if len(row) != 3:
+                                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Row #{row_count} contains {len(row)} entries instead of 3. Please extract the crest_conformers.xyz file using the CREST .xyz splitter function in this GUI, then provide the Energies.csv generated as an input here.')
+                                return
+                            else:
+                                filename, energy, relative_energy = row
+                        else:
+                            continue
 
                         #Check filename format
                         if not filename.lower().endswith('.gjf') and not filename.lower().endswith('.inp') and not filename.lower().endswith('.xyz'):

@@ -1,4 +1,4 @@
-import os, time
+import os, re, time
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -21,6 +21,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         vibs_array, ZPE, Total_ZPE = None, None, None
         n_imag = 0
         imag_freqs = None
+        spin_contam = None
 
         #flag to check for normal termination
         normal_term = False
@@ -51,6 +52,10 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
             #multiplicity
             elif line.startswith(' Multiplicity'):
                 multi = float(line.split()[-1])
+
+            #spin contamination
+            elif line.startswith('Deviation                       :'):
+                spin_contam = float(line.split()[-1])
             
             #final electronic energy
             elif line.startswith('FINAL SINGLE POINT ENERGY'):
@@ -129,57 +134,116 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                     
                         imag_freqs.append(vib)
                         n_imag += 1
-
+        
         #After all data is extracted from the .out file and thermochem was requested (and was completed!), calculate he ZPE from the now non-None vibs array
         if vibs_array is not None:
             vibs_array = np.array(vibs_array)
             ZPE = 0.5 * c['h_SI'] * c['c_SI'] * 100. * np.sum(vibs_array) * c['J2Eh']  #Hartree
             Total_ZPE = Eelec + ZPE
 
-        return charge, multi, Eelec, RotABC, sigma_OR, mass, m_SI, total_dipole, dipole_x, dipole_y, dipole_z, polariz, dipole_ax, vibs_array, ZPE, Total_ZPE, n_imag, imag_freqs, normal_term, thermochem_flag
+        return charge, multi, Eelec, RotABC, sigma_OR, mass, m_SI, total_dipole, dipole_x, dipole_y, dipole_z, polariz, dipole_ax, vibs_array, ZPE, Total_ZPE, n_imag, imag_freqs, normal_term, thermochem_flag, spin_contam
         
-    def calc_partition_function(RotABC, sigma_OR, vibs_array, multi, T, p):
+    def calc_partition_function(filename, m_SI, RotABC, sigma_OR, vibs_array, multi, T, p):
         '''Calculates the partition functions (trans, rot, vib, elec) for the molecule at a given p, T. Methodology follows that of “Molecular Thermodynamics” by McQuarrie and Simon (1999)'''
-        
+
+        #Set np to raise exceptions for divide by zero
+        np.seterr(divide='raise')
+
         #translational partition function
         q_trans = (2. * np.pi * m_SI * c['kB'] * T / c['h_SI'] ** 2) ** 1.5 * c['kB'] * T / p
 
-        #rotational partitional function
-        q_rot = 1. / sigma_OR * (c['kB'] * T / (c['h_SI'] * c['c_SI'])) ** 1.5 * (np.pi / (np.prod(RotABC))) ** 0.5
+        #rotational partitional function - three cases: non-linear, linear, and atomic
+        try:
+            
+            #non-linear polyatomic
+            q_rot = 1. / sigma_OR * (c['kB'] * T / (c['h_SI'] * c['c_SI'])) ** 1.5 * (np.pi / (np.prod(RotABC))) ** 0.5
+            rot_type = 'polyatomic'
 
-        #vibrational partition function
-        u = c['h_SI'] * c['c_SI'] * vibs_array * 100. / (c['kB'] * T)
-        q_vib = np.prod(1. / (1. - np.exp(-u)))
+        #if the molecule is a diatomic, linear polyatomic, or a single atom, a FloatingPointError error will be encountered. In this case, we can evaualte the rotational parititon function using that for a diatomic
+        except FloatingPointError:
+            
+            #any linear molecule
+            try: 
+                q_rot = 1. / sigma_OR * (c['kB'] * T / (c['h_SI'] * c['c_SI'] * np.max(RotABC))) 
+                rot_type = 'linear'
 
-        #electronic partition function
+                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {filename} is a linear molecule. Rotational contributions to energy and entropy will be adjusted accordingly.')
+                QApplication.processEvents()
+
+            #if still a FloatingPointError, then the calculation is on a single atom, in which case, the q_rot is 1.
+            except FloatingPointError:
+
+                q_rot = 1.
+                rot_type = 'atom'
+                
+                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {filename} is a single atom. Rotational contributions to energy and entropy will be adjusted accordingly.')
+                QApplication.processEvents()
+
+        #Set np back to default warning
+        np.seterr(divide='warn')
+
+        #vibrational partition functions - 2 cases: atomic and non-atomic
+
+        #non-atomic entities
+        if rot_type != 'atom':
+            u = c['h_SI'] * c['c_SI'] * vibs_array * 100. / (c['kB'] * T) #factor of 100 is for conversion of cm-1 to m-1
+            q_vib = np.prod(1. / (1. - np.exp(-u)))
+
+        #atoms dont have vibrations, so their parition function is unity. 
+        else:
+            q_vib = 1.
+        
+        #electronic partition function - equates to the multiplicity of the ion for species in their ground state
         q_elec = multi
+        
+        return [q_trans, q_rot, q_vib, q_elec, rot_type]
 
-        return [q_trans, q_rot, q_vib, q_elec]
-
-    def calc_thermochemistry(vibs_array, q_trans, q_rot, q_vib, q_elec, ZPE, mol_Eelec, T, p):
+    def calc_thermochemistry(vibs_array, q_trans, q_rot, q_vib, q_elec, ZPE, mol_Eelec, T, p, rot_type):
         '''Computes standard thermochemical functions at given p, T.
         Methodology follows that of “Molecular Thermodynamics” by McQuarrie and Simon (1999), which was summarized by Ochterski in 2000 (https://gaussian.com/wp-content/uploads/dl/thermo.pdf), and uses slightly different method for vibrational contibutions compared to the methods used in ORCA.
         Consequently, the thermochemical corrections computed here will be slightly different than the printouts in the ORCA .out file. Both are valid, although these values generated by this code more generally applicable.'''
 
-        theta_v = c['h_SI'] * c['c_SI'] * vibs_array * 100. / c['kB']
-        theta_v_oT = theta_v / T
+        #Translational contributions
+        S_trans = c['kB_Eh'] * (np.log(q_trans) + 1. + (3. / 2.)) #translational contribution to entropy
+        E_trans = (3. / 2.) * c['kB_Eh'] * T #translational contribution to energy
+        
+        #Rotational contributions; 3 cases for rotation: single atom, linear, or non-linear polyatomic
+        if rot_type == 'atom':
+            #atoms have no rotational constants, so contributions from rotation to entropy and energy are both zero
+            S_rot = 0
+            E_rot = 0
+        
+        elif rot_type == 'linear':
+            S_rot = c['kB_Eh'] * (np.log(q_rot) + 1.) #rotational contribution to entropy for linear molecule
+            E_rot = c['kB_Eh'] * T #rotational contribution to energy for linear molecule
 
-        #Contributions to total Entropy
-        S_trans = c['kB_Eh'] * (np.log(q_trans) + 1. + 3. / 2.) #translational contribution to entropy
-        S_rot = c['kB_Eh'] * (np.log(q_rot) + 3. / 2.) #rotational contribution to entropy
-        S_vib = c['kB_Eh'] * np.sum(theta_v_oT / (np.exp(theta_v_oT) - 1.) - np.log(1. - np.exp(-theta_v_oT))) #vibrational contribution to entropy - slightly different than the default method used by ORCA
+        else:
+            S_rot = c['kB_Eh'] * (np.log(q_rot) + (3. / 2.)) #rotational contribution to entropy for a non-linear polyatomic
+            E_rot = 3. / 2. * c['kB_Eh'] * T #rotational contribution to energy for a non-linear polyatomic
+        
+        #Vibrational contributions: atomic vs. non-atomic
+        if rot_type != 'atom':
+            
+            theta_v = c['h_SI'] * c['c_SI'] * vibs_array * 100. / c['kB']
+            theta_v_oT = theta_v / T
+            
+            S_vib = c['kB_Eh'] * np.sum((theta_v_oT / (np.exp(theta_v_oT) - 1.)) - np.log(1. - np.exp(-theta_v_oT))) #vibrational contribution to entropy - slightly different than the default method used by ORCA
+            E_vib = c['kB_Eh'] * np.sum(theta_v / (np.exp(theta_v_oT) - 1.)) #vibrational contribution to energy
+        
+        else:
+            S_vib = 0
+            E_vib = 0
+            ZPE = 0 #needed for calculation of total energy later
+        
+        #Electronic contributions
         S_elec = c['kB_Eh'] * np.log(q_elec) #electronic contribution to entropy
-        Total_S = S_trans + S_rot + S_vib + S_elec
+        E_elec = 0. #always zero for systems in their electronic ground state
 
         #Contributions to total energy
-        E_trans = 3. / 2. * c['kB_Eh'] * T #translational contribution to energy
-        E_rot = 3. / 2. * c['kB_Eh'] * T #rotational contribution to energy
-        E_vib = c['kB_Eh'] * np.sum(theta_v / (np.exp(theta_v_oT) - 1.)) #vibrational contribution to energy
-        E_elec = 0. #always zero for systems in their electronic ground state
+        Total_S = S_trans + S_rot + S_vib + S_elec
         
-        #note mol_Eelec is the electronic energy of the analyte
         Ecorr = E_trans + E_rot + E_vib + E_elec #total energy
-        Total_E = Ecorr + ZPE + mol_Eelec
+        Total_E = Ecorr + ZPE + mol_Eelec #note mol_Eelec is the electronic energy of the analyte
 
         Hcorr = (Ecorr + c['kB_Eh'] * T) + ZPE
         Total_H = Hcorr + mol_Eelec
@@ -213,9 +277,9 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         'Total Entropy (T*S)',
         'Total Gibbs Energy',
         'Relative Gibbs Energy',
-        'Rot. const. A',
-        'Rot. const. B',
-        'Rot. const. C',
+        'Rot. const. A (cm**-1)',
+        'Rot. const. B (cm**-1)',
+        'Rot. const. C (cm**-1)',
         'Rot. Symm. Number',
         'Dipole X',
         'Dipole Y',
@@ -226,6 +290,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         'Rot. Part. func.',
         'Vib. Part. function',
         'Elec. Part. func.',
+        'Spin contam: Deviation from S*(S+1)'
     ]
 
     #Format the header for consistent spacing 
@@ -257,7 +322,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
     for filename in filenames:
 
         #get data from input file
-        charge, multi, Eelec, RotABC, sigma_OR, mass, m_SI, total_dipole, dipole_x, dipole_y, dipole_z, polariz, dipole_ax, vibs_array, ZPE, Total_ZPE, n_imag, imag_freqs, normal_term, thermochem_flag = read_molecule_data(os.path.join(directory, filename), vib_scl)
+        charge, multi, Eelec, RotABC, sigma_OR, mass, m_SI, total_dipole, dipole_x, dipole_y, dipole_z, polariz, dipole_ax, vibs_array, ZPE, Total_ZPE, n_imag, imag_freqs, normal_term, thermochem_flag, spin_contam = read_molecule_data(os.path.join(directory, filename), vib_scl)
 
         #if no frequencies were calcualted, then inform the user why placeholder values will be written in place of all thermochemical qunatities. 
         if not thermochem_flag:
@@ -276,44 +341,83 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                 abnormal_term_list.append(filename)
         
         #Now we can ensure that all remaining files have the required information. 
-        
         #Check 1: if any item above is None, then thermochem was not extracted correctly
         #Check 2: if any item above in not None but is a numpy array [isinstance(x, np.ndarray)]-  ensure that none of its elements are non-zero and not None [np.all()]. If they are, vib freqs were not extracted properly
-        if all(x is not None and (not isinstance(x, np.ndarray) or np.all(x)) for x in [charge, multi, Eelec, RotABC, sigma_OR, mass, m_SI, total_dipole, dipole_x, dipole_y, dipole_z, dipole_ax, vibs_array, ZPE]):
-
-            #calculate parition functions from input data
-            q_trans, q_rot, q_vib, q_elec = calc_partition_function(RotABC, sigma_OR, vibs_array, multi, T, p)
-
-            #calculate thermochemical corrections
-            Ecorr, Total_E, Hcorr, Total_H, Gcorr, Total_G, Total_S = calc_thermochemistry(vibs_array, q_trans, q_rot, q_vib, q_elec, ZPE, Eelec, T, p)
-            Gibbs_list.append(Total_G)
-
-            #if a file contians imaginary frequencies, extract their values and write them to a list for printing laster on. This is useful for determining whether a DFT job needs to be resubmitted.
-            if n_imag > 0:
+        
+        if all(x is not None and (not isinstance(x, np.ndarray) or np.all(x)) for x in [charge, multi, Eelec, sigma_OR, mass, m_SI, total_dipole, dipole_x, dipole_y, dipole_z, dipole_ax, vibs_array, ZPE]):
             
-                try:
-                    master_imag_freq_list.append([filename, imag_freqs]) #append list of imag freqs to master imag_freqs alongside the associated filename
-                    
-                except Exception as e:
-                    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error extracting imaginary frequency data from {filename}: {e}')
-                    QApplication.processEvents()
-                    pass
+            #calculate parition functions from input data if thermochem was requested
+            if thermochem_flag:
+                
+                q_trans, q_rot, q_vib, q_elec, rot_type = calc_partition_function(filename, m_SI, RotABC, sigma_OR, vibs_array, multi, T, p)
 
-            #placeholder for relative energy
-            Erel = 123.0
+                #calculate thermochemical corrections
+                Ecorr, Total_E, Hcorr, Total_H, Gcorr, Total_G, Total_S = calc_thermochemistry(vibs_array, q_trans, q_rot, q_vib, q_elec, ZPE, Eelec, T, p, rot_type)
+                Gibbs_list.append(Total_G)
 
-            #Check if polariz is None and replace it with a placeholder if so
+                #if a file contians imaginary frequencies, extract their values and write them to a list for printing laster on. This is useful for determining whether a DFT job needs to be resubmitted.
+                if n_imag > 0:
+                
+                    try:
+                        master_imag_freq_list.append([filename, imag_freqs]) #append list of imag freqs to master imag_freqs alongside the associated filename
+                        
+                    except Exception as e:
+                        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error extracting imaginary frequency data from {filename}: {e}')
+                        QApplication.processEvents()
+                        pass
+
+                #placeholder for relative energy
+                Erel = 123.0
+
+                #Check if polariz and spin contamination are None and replace it with a placeholder if so
+                polariz_value = 'N/A' if polariz is None else polariz
+                spin_contam_value = 'N/A' if spin_contam is None else spin_contam
+
+                #Prepare the values to be written
+                values = [filename, n_imag, Eelec, ZPE, Ecorr, Hcorr, Gcorr, Total_ZPE, Total_E, Total_H, Total_S * T, Total_G, Erel, RotABC[0]/100, RotABC[1]/100, RotABC[2]/100, sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, q_trans, q_rot, q_vib, q_elec, spin_contam_value]
+        
+        #if thermochem was not requested (like in a single point energy calculation), return N/A 
+        elif not thermochem_flag:
+            
+            #Check if polariz and spin contamination are None and replace it with a placeholder if so
             polariz_value = 'N/A' if polariz is None else polariz
+            spin_contam_value = 'N/A' if spin_contam is None else spin_contam
 
-            #Prepare the values to be written
-            values = [filename, n_imag, Eelec, ZPE, Ecorr, Hcorr, Gcorr, Total_ZPE, Total_E, Total_H, Total_S * T, Total_G, Erel, RotABC[0], RotABC[1], RotABC[2], sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, q_trans, q_rot, q_vib, q_elec]
-
-        #if the file is missing any info that is checked for, write -12345.0 as a placeholder'
-        else:
-            #Check if polariz is None and replace it with a placeholder if so
-            polariz_value = 'N/A' if polariz is None else polariz
             Gibbs_list.append(12345.0)
-            values = [filename, -12345.0, Eelec, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, RotABC[0], RotABC[1], RotABC[2], -12345.0, dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, -12345.0, -12345.0, -12345.0, -12345.0]
+            values = [filename, 'N/A', Eelec, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', -12345.0, -12345.0, RotABC[0]/100, RotABC[1]/100, RotABC[2]/100, 'N/A', dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam_value]
+        
+        #if the file is missing any info that is checked for and did request thermochem, write -12345.0 as a placeholder'
+        else:
+            
+            #Check if polariz and spin contamination are None and replace it with a placeholder if so
+            polariz_value = 'N/A' if polariz is None else polariz
+            spin_contam_value = 'N/A' if spin_contam is None else spin_contam
+            
+            #all above checks will be failed for atomic entities. So, if the thermochem flag is check, try to calcualte thermochem for the atom. If it fails for any reason, write the placeholder
+            if thermochem_flag:              
+                try:
+                    q_trans, q_rot, q_vib, q_elec, rot_type = calc_partition_function(filename, m_SI, RotABC, sigma_OR, vibs_array, multi, T, p)
+
+                    #calculate thermochemical corrections
+                    Ecorr, Total_E, Hcorr, Total_H, Gcorr, Total_G, Total_S = calc_thermochemistry(vibs_array, q_trans, q_rot, q_vib, q_elec, ZPE, Eelec, T, p, rot_type)
+                    Gibbs_list.append(Total_G)
+                    
+                    #placeholder for relative energy
+                    Erel = 123.0
+
+                    #Define ZPE externally because it will be None from the initializations
+                    ZPE = 0
+                    Total_ZPE = Eelec + ZPE
+                    values = [filename, n_imag, Eelec, ZPE, Ecorr, Hcorr, Gcorr, Total_ZPE, Total_E, Total_H, Total_S * T, Total_G, Erel, RotABC[0]/100, RotABC[1]/100, RotABC[2]/100, sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, q_trans, q_rot, q_vib, q_elec, spin_contam_value]
+
+                #if thermochem corrections cannot be calculated (such as because of a incomplete job, write placeholders)
+                except:
+                    Gibbs_list.append(12345.0)
+                    values = [filename, -12345.0, Eelec, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, polariz_value, -12345.0, -12345.0, -12345.0, -12345.0, spin_contam_value]                    
+ 
+            else:
+                Gibbs_list.append(12345.0)
+                values = [filename, -12345.0, Eelec, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0,-12345.0, -12345.0, -12345.0, -12345.0, dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, -12345.0, -12345.0, -12345.0, -12345.0, spin_contam_value]
         
         #Create a format string for consistent spacing, then write the data to the output.csv
         format_str = '{}'.format(','.join(['{:<25}'] * len(values)) + ',\n')
@@ -356,12 +460,11 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
 
         for _, row in df.iterrows():
             values = list(row)
-            #print(values)
             opf.write(format_str.format(*values))
     
     #Inform users via the print window of any abnormal terminations, missing thermochemistry, and imaginary frequencies
     if len(thermochem_not_requested) > 0:
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Vibrational frequencies were not requested from the following files; -12345.0 is being written as a placeholder for relevant quantieis:\n{", ".join(thermochem_not_requested)}.\n')
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Vibrational frequencies were not requested from the following files; N/A is being written as a placeholder for relevant quantieis:\n{", ".join(thermochem_not_requested)}.\n')
 
     if len(abnormal_term_list) > 0:
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The following files did not terminate normally, and conseuqently, will have -12345.0 being written in place of missing values:\n{", ".join(abnormal_term_list)}.\n')
@@ -377,8 +480,9 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
     print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Electronic energies, thermochemistry, and molecular properties have been extracted from {len(filenames)} ORCA .out files in {np.round(time.time() - start,2)} seconds.')
 
 #external testing
-if __name__ == "__main__":
-    directory = r'D:\OneDrive\OneDrive - University of Waterloo\Waterloo\GitHub\ORCA_Analysis_GUI\Sample_Files\T7_ORCAThermochemAnalyzer'
+if __name__ == '__main__':
+
+    directory = r'C:\Users\ChristianIeritano\OneDrive - University of Waterloo\Waterloo\Manuscripts\2024\Heterobimetallic_Coordination_Derek\Components\DFT_OptFreq\debug'
     sort_by = 'F'
     T = 298.15
     p = 100000.
@@ -449,5 +553,3 @@ if __name__ == "__main__":
 
     #run the code
     ORCA_Thermochem_Calculator(directory,T, p, vib_scl, sort_by)
-
-
