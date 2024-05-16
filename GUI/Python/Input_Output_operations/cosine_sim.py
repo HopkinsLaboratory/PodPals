@@ -112,8 +112,8 @@ def cosine_sim(directory_or_csv, similarity_threshold, write_to_file):
                 reader = csv.reader(csvfile)
                 next(reader)
                 
-                #get the file list from the .csv
-                file_list = [row[0] for row in reader]
+                #get the file list from the .csv, ignoring empty lines
+                file_list = [row[0] for row in reader if row and row[0].strip()]
 
         else:
             destination = directory_or_csv

@@ -79,7 +79,7 @@ def wavelength_to_eV(energy):
     '''Convert wavelength (nm) to eV
     Wavelength (nm) to Joules via (h*c)/(lambda * 1E-9), then J to eV via multiplication by electric constant (eV2J)'''
 
-    return ((c['h_SI'] * c['c_SI']) / (energy * 1.E-9)) / c['eV2J'] #Wavelength (nm) to Joules 
+    return ((c['h_SI'] * c['c_SI']) / (energy * 1.E-9)) / c['eV2J'] 
 
 def wavenumber_to_wavelength(energy):
     '''Convert wavenumber (cm^-1) to wavelength (nm)
