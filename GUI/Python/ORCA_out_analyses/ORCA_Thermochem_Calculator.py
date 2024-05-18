@@ -22,6 +22,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         n_imag = 0
         imag_freqs = None
         spin_contam = None
+        processed_freqs = set()
 
         #flag to check for normal termination
         normal_term = False
@@ -125,7 +126,13 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                     except TypeError:
                         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: Unable to convert {vib_str} to a float from {os.path.basename(file)}.')
                         continue
+                    
+                    #sometimes ORCA prints the freq block twice, so we need to check if a freq has already been added to the freq list
+                    if vib_str in processed_freqs:
+                        continue
                         
+                    processed_freqs.add(vib_str)
+
                     if vib > 0:
                         vibs_array.append(vib)  #in cm**-1
                     else: #increase counter for imaginary freqs if any freqs are < 0
