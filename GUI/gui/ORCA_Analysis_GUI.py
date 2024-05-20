@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QApplication, QHBoxLayout, QComboBox, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QMessageBox, QLabel, QGroupBox, QLineEdit, QPushButton, QFileDialog, QTextEdit, QCheckBox, QSpinBox, QSizePolicy, QDoubleSpinBox
 from PyQt6.QtCore import QCoreApplication, Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QScreen, QIcon
+from PyQt6.QtGui import QScreen, QIcon, QTextCursor
 
 import platform, os, time, shutil, stat, sys, subprocess, traceback
 import csv
@@ -153,7 +153,10 @@ class ORCAAnalysisSuite(QMainWindow):
 
     def update_output_text(self, text):
         self.output_text_edit.insertPlainText(text)
-        QApplication.processEvents()
+        
+        #move the cursor to the end of the text edit to ensure it scrolls to the bottom
+        self.output_text_edit.moveCursor(QTextCursor.MoveOperation.End)
+        self.output_text_edit.ensureCursorVisible()
 
     def closeEvent(self, event):
         #Restore original stdout before closing the application
