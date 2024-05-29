@@ -44,13 +44,14 @@ def extract_ORCA_coupled_cluster(directory):
     
     missing_CCSD = [] #list to write files that are missing coupled cluster energies - CCSD will always be printed when doing coupled cluster calcs in ORCA (even when doing CCSD(T))
 
-    #Initialize variables 
-    T1_diagnostic = CCSD = triples_corr = final_corr_energy = CCSDT =  None
-
     for filename in filenames:
         with open(os.path.join(directory, filename), 'r') as opf:
             data = opf.readlines()
-
+        
+        #Initialize variables (now inside the loop to reinitialize for each file)
+        T1_diagnostic = CCSD = triples_corr = final_corr_energy = CCSDT =  None
+        
+        #search output for CCSDT info
         for line in data:
             line = line.strip() #remove any pesky leading and trailing whitespace
             
