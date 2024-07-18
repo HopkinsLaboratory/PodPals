@@ -591,7 +591,7 @@ class Generate_ORCAInputTab(QWidget):
         mpp_label = QLabel('Mem per core (MB):')
         self.mpp_input = QSpinBox()
         self.mpp_input.setMaximum(20000)
-        self.mpp_input.setValue(3400)
+        self.mpp_input.setValue(3200)
         self.mpp_input.setMinimumWidth(60)
 
         ncores_label = QLabel('#cores:')
@@ -832,7 +832,7 @@ class ORCAOut_ORCAInputTab(QWidget):
         mpp_label = QLabel('Mem per core (MB):')
         self.mpp_input = QSpinBox()
         self.mpp_input.setMaximum(20000)
-        self.mpp_input.setValue(3400)
+        self.mpp_input.setValue(3200)
         self.mpp_input.setMinimumWidth(60)
 
         ncores_label = QLabel('#cores:')

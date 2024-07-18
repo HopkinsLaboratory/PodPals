@@ -22,14 +22,12 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         n_imag = 0
         imag_freqs = None
         spin_contam = None
-        processed_freqs = set()
 
         #flag to check for normal termination
         normal_term = False
 
         #Initialize flag to check if thermochem was requested in the method line
         thermochem_flag = False  
-
 
         #First, we find the section of the out file that contains the data imported from the .inp - this will contain the freq flag that determined whether thermochem is calcualted
         for line in data:
@@ -111,37 +109,58 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
             
             elif "****ORCA TERMINATED NORMALLY****" in line:
                 normal_term = True
-
-            #only look for vibrations if 'freq' was specificed in the method line
-            if thermochem_flag:
-                
-                #vibrational freqs
-                if line.startswith('freq.   '):
-                    if vibs_array == None:
-                        vibs_array = []
-                    
-                    vib_str = line.split()[1]  #Extract the string
-                    try:
-                        vib = float(line.split()[1]) * vib_scl
-                    except TypeError:
-                        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error: Unable to convert {vib_str} to a float from {os.path.basename(file)}.')
-                        continue
-                    
-                    #sometimes ORCA prints the freq block twice, so we need to check if a freq has already been added to the freq list
-                    if vib_str in processed_freqs:
-                        continue
-                        
-                    processed_freqs.add(vib_str)
-
-                    if vib > 0:
-                        vibs_array.append(vib)  #in cm**-1
-                    else: #increase counter for imaginary freqs if any freqs are < 0
-                        if imag_freqs == None:
-                            imag_freqs = []
-                    
-                        imag_freqs.append(vib)
-                        n_imag += 1
         
+        #only look for vibrations if 'freq' was specificed in the method line
+        if thermochem_flag:
+            
+            #Search for imaginary freqs in the last printing of vib frequencies (in case multiple calculations of Hessian is requested by the user during OptTS )
+            #get the index of the line where the last vib freq block is printed
+            last_vib_header_index = None
+            last_vib_footer_index = None
+            for i, line in enumerate(data):
+                
+                #find start of the LAST vib header section
+                if line.strip() == '-----------------------' and i + 1 < len(data) and data[i + 1].strip() == 'VIBRATIONAL FREQUENCIES':
+                    last_vib_header_index = i + 4  #The line after the header and scaling factor line
+
+                if line.strip() == '------------' and i + 1 < len(data) and data[i + 1].strip() == 'NORMAL MODES':
+                    last_vib_footer_index = i  #The lines before the 'NORMAL MODES' block
+            
+            if last_vib_header_index is not None and last_vib_footer_index is not None:
+                vibs_array = []
+                for line in data[last_vib_header_index:last_vib_footer_index]:             
+                   
+                    #get vib freqs
+                    if 'cm**-1' in line:                       
+                        if '***imaginary mode***' not in line:
+                            vib_str = line.split()[1]  # Extract the vib freq from strings of the format:    1:         0.00 cm**-1
+                            try:
+                                vib = float(line.split()[1]) * vib_scl
+                            except (TypeError, ValueError):
+                                print(f'Error: Unable to convert {vib_str} to a float from {os.path.basename(file)}.')
+                                continue
+                            
+                            if vib > 0:  # Exclude zero and imaginary modes
+                                vibs_array.append(vib)  # in cm**-1
+      
+                        #SEARCH FOR IMAGINARY MODES
+                        if '***imaginary mode***' in line:
+                            if imag_freqs is None:
+                                imag_freqs = []
+                            
+                            vib_str = line.split()[1]  # Extract the vib freq from strings of the format:       6:      -502.32 cm**-1 ***imaginary mode***
+                            try:
+                                vib = float(line.split()[1]) #no scaling applied to imag mobe
+                                if vib < 0:
+                                    imag_freqs.append(vib)
+                                    n_imag += 1
+
+                            except ValueError:
+                                print(f'Error: Unable to convert {vib_str} to a float from {os.path.basename(file)}.')
+                                continue
+
+
+       
         #After all data is extracted from the .out file and thermochem was requested (and was completed!), calculate he ZPE from the now non-None vibs array
         if vibs_array is not None:
             vibs_array = np.array(vibs_array)
@@ -489,7 +508,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
 #external testing
 if __name__ == '__main__':
 
-    directory = r'C:\Users\ChristianIeritano\OneDrive - University of Waterloo\Waterloo\Manuscripts\2024\Heterobimetallic_Coordination_Derek\Components\DFT_OptFreq\debug'
+    directory = r'D:\OneDrive\OneDrive - University of Waterloo\Waterloo\Manuscripts\2024\Fentanyl_Prototropic_Isomers\Calculations\FuranylFentanyl\Interconversion_TSs\NEB_NoSolvent\NEB_Iso1_GasPhase\TS\New folder'
     sort_by = 'F'
     T = 298.15
     p = 100000.
