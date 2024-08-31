@@ -2,7 +2,7 @@ import os, re, time
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from Python.constants_and_conversions import c
+#from Python.constants_and_conversions import c
 
 from PyQt6.QtWidgets import QApplication
 import numpy as np
@@ -32,12 +32,12 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         #First, we find the section of the out file that contains the data imported from the .inp - this will contain the freq flag that determined whether thermochem is calcualted
         for line in data:
             #Starting from the top of the file, look for freq in each line. If it is found, break the loop
-            if 'freq' in line.lower():
+            if re.search(r'\bfreq\b', line, re.IGNORECASE):
                 thermochem_flag = True
                 break
             
             #There is no point in searching lines after the termination of the input block, so we're defining a flag that will break this loop when set to true
-            elif '****END OF INPUT****' in line:
+            elif '*END OF INPUT*' in line:
                 break
 
         #get info from files depending on if thermochem was calculated or not
@@ -403,7 +403,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                 values = [filename, n_imag, Eelec, ZPE, Ecorr, Hcorr, Gcorr, Total_ZPE, Total_E, Total_H, Total_S * T, Total_G, Erel, RotABC[0]/100, RotABC[1]/100, RotABC[2]/100, sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, q_trans, q_rot, q_vib, q_elec, spin_contam_value]
         
         #if thermochem was not requested (like in a single point energy calculation), return N/A 
-        elif not thermochem_flag:
+        elif not thermochem_flag and Eelec:
             
             #Check if polariz and spin contamination are None and replace it with a placeholder if so
             polariz_value = 'N/A' if polariz is None else polariz
@@ -412,6 +412,11 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
             Gibbs_list.append(12345.0)
             values = [filename, 'N/A', Eelec, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', -12345.0, -12345.0, RotABC[0]/100, RotABC[1]/100, RotABC[2]/100, 'N/A', dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam_value]
         
+        #if the single point energy calculation did not finish
+        elif not thermochem_flag and not Eelec:
+            values = [filename, -12345.0, 12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, polariz_value, -12345.0, -12345.0, -12345.0, -12345.0, spin_contam_value]
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {filename} is a single point energy calculation that did not finish. -12345.0 wil lbe written as a placeholder.')
+
         #if the file is missing any info that is checked for and did request thermochem, write -12345.0 as a placeholder'
         else:
             
@@ -445,6 +450,20 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                 Gibbs_list.append(12345.0)
                 values = [filename, -12345.0, Eelec, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0,-12345.0, -12345.0, -12345.0, -12345.0, dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, -12345.0, -12345.0, -12345.0, -12345.0, spin_contam_value]
         
+        #debugging for when problems arise
+        '''
+        variable_names = ['filename', 'n_imag', 'Eelec', 'ZPE', 'Ecorr', 'Hcorr', 'Gcorr', 'Total_ZPE', 'Total_E', 'Total_H', 'Total_S*T', 'Total_G', 'Erel', 'RotA/100', 'RotB/100', 'RotC/100', 'sigma_OR', 'dipole_x', 'dipole_y', 'dipole_z', 'total_dipole', 'polariz_value', 'q_trans', 'q_rot', 'q_vib', 'q_elec', 'spin_contam_value']
+        variable_values = [v if v is not None else 'I am none' for v in values]
+        with pd.ExcelWriter(os.path.join(directory, 'debugging.xlsx'), engine='openpyxl') as writer:
+            
+            df = pd.DataFrame({
+                'Variable Name': variable_names,
+                'Value': variable_values
+            })
+
+            df.to_excel(writer, sheet_name=f'{filename}', index=False)
+        '''
+
         #Create a format string for consistent spacing, then write the data to the output.csv
         format_str = '{}'.format(','.join(['{:<25}'] * len(values)) + ',\n')
 
@@ -499,7 +518,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Of the files that did not terminate normally, the following did contain vibrational frequencies, and thus, likely reached walltime during a subsequent calculation step (e.g., CHELPG charge calcualtion):\n{", ".join(abnormal_term_wVibs_list)}.\n')
     
     if len(master_imag_freq_list) > 0:
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {len(imag_freqs)} file(s) contain imaginary frequencies:')
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {len(master_imag_freq_list)} file(s) contain imaginary frequencies:')
         for filename, imag_freq in master_imag_freq_list:
             print(f'{filename}: {imag_freq}')
 
@@ -508,7 +527,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
 #external testing
 if __name__ == '__main__':
 
-    directory = r'D:\OneDrive\OneDrive - University of Waterloo\Waterloo\Manuscripts\2024\Fentanyl_Prototropic_Isomers\Calculations\FuranylFentanyl\Interconversion_TSs\NEB_NoSolvent\NEB_Iso1_GasPhase\TS\New folder'
+    directory = r'C:\Users\Chris\OneDrive - University of Waterloo\Waterloo\Manuscripts\2024\Heterobimetallic_Coordination_Derek\Calcs_ORCA6\CuCu\Freq'
     sort_by = 'F'
     T = 298.15
     p = 100000.
