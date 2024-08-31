@@ -93,19 +93,26 @@ def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line
         #Get the geometry and write to a list called geometry
         geometry = [] #Initialize the geometry list
         XYZ_data = re.findall(r'CARTESIAN COORDINATES \(ANGSTROEM\)([\s\S]*?)CARTESIAN COORDINATES \(A.U.\)', data)
-
-        #Loop through each line in the FINAL geom block, split each line, then append to the geometry list
-        for line in XYZ_data[-1].split('\n')[2:-3]:
-            split_line = line.split()
-            #the only entry with 4 splits, where instance 1 is an atom symbol (sometimes an atom number!), and a period in instances 1-3 will be the xyz coordiante lines. Write these to the geom list
-            if len(split_line) == 4 and (split_line[0].isalpha() or split_line[0].isdigit()) and all('.' in x for x in split_line[1:3]):
-                geometry.append(split_line)
-
-        if not geometry:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No atomic coordinate data was found in {filename}. Processing of this file will be skipped.')
+        
+        if not XYZ_data:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No atomic coordinate data was found in {filename}. Skipping...')
             QApplication.processEvents()
             continue
         
+        #Loop through each line in the FINAL geom block, split each line, then append to the geometry list
+        try:
+            for line in XYZ_data[-1].split('\n')[2:-3]:
+                split_line = line.split()
+                #the only entry with 4 splits, where instance 1 is an atom symbol (sometimes an atom number!), and a period in instances 1-3 will be the xyz coordiante lines. Write these to the geom list
+                if len(split_line) == 4 and (split_line[0].isalpha() or split_line[0].isdigit()) and all('.' in x for x in split_line[1:3]):
+                    geometry.append(split_line)
+
+        #sometimes files with a .out extension from other programs are found in the target directory - lets handle those!
+        except IndexError as e:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Index error encountered in {filename}. Skipping...')
+            QApplication.processEvents()
+            continue
+
         #If geometry is extracted, start to write the ORCA .inp file
         else:
 
