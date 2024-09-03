@@ -2,7 +2,13 @@ import os, re, time
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from Python.constants_and_conversions import c
+#from Python.constants_and_conversions import c
+
+#supress a specific warning about a pandas update that isn't going to impact the code
+import warnings
+
+# Suppress all FutureWarnings
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 from PyQt6.QtWidgets import QApplication
 import numpy as np
@@ -159,8 +165,6 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                                 print(f'Error: Unable to convert {vib_str} to a float from {os.path.basename(file)}.')
                                 continue
 
-
-       
         #After all data is extracted from the .out file and thermochem was requested (and was completed!), calculate he ZPE from the now non-None vibs array
         if vibs_array is not None:
             vibs_array = np.array(vibs_array)
@@ -319,25 +323,10 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         'Spin contam: Deviation from S*(S+1)'
     ]
 
-    #Format the header for consistent spacing 
-    header = '{},\n'.format(','.join(['{:<25}'] * len(properties)))
+    #initialize pd FataFrame w/ columns assoicated w/ thermo properties
+    df = pd.DataFrame(columns=properties)
 
-    #Create output file and write header to it, ensuring that previous files of the same name are not overwritten
-    output_csv = os.path.join(directory, f'Thermo_data_{int(T)}K_{int(p)}Pa_{str(np.round(vib_scl, 4)).replace(".","-")}vibscl.csv')
-
-    i = 2
-    while os.path.isfile(output_csv):
-        output_csv = os.path.join(directory, f'Thermo_data_{int(T)}K_{int(p)}Pa_{str(np.round(vib_scl, 4)).replace(".","-")}vibscl_{i}.csv')
-        i += 1
-    
-    try:
-        with open(output_csv, 'w') as opf:
-            opf.write(header.format(*properties))
-    
-    except IOError as e:
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An error was encountered when writing to {os.path.basename(output_csv)}: {e}.\nFile processing will not proceed.')
-        return
-
+    #initialize lists for storing data
     Gibbs_list = []
     thermochem_not_requested = []
     master_imag_freq_list = []
@@ -350,36 +339,34 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         #get data from input file
         charge, multi, Eelec, RotABC, sigma_OR, mass, m_SI, total_dipole, dipole_x, dipole_y, dipole_z, polariz, dipole_ax, vibs_array, ZPE, Total_ZPE, n_imag, imag_freqs, normal_term, thermochem_flag, spin_contam = read_molecule_data(os.path.join(directory, filename), vib_scl)
 
-        #if no frequencies were calcualted, then inform the user why placeholder values will be written in place of all thermochemical qunatities. 
-        if not thermochem_flag:
-            thermochem_not_requested.append(filename)
-
-        #If the ORCA .out file did not finish normally... 
-        if not normal_term:
-
-            #did they get to the point where they calcualted vib freqs? Sometimes the job terminates due to walltime during the CHELPG charge calculation step
-            #We can check for this to see if a non-None ZPE was returned.
-            #ZPE requires the extraction of all vib frequencies, and will only be updated to a non-None value if vib freqs are found. 
-            if ZPE is not None:
-                abnormal_term_wVibs_list.append(filename)
-
-            else:
-                abnormal_term_list.append(filename)
+        #evaluate rotational contants if numbers were extracted. otherwise, return N/A
+        try:
+            RotA = RotABC[0]/100
+            RotB = RotABC[1]/100
+            RotC = RotABC[2]/100
         
-        #Now we can ensure that all remaining files have the required information. 
-        #Check 1: if any item above is None, then thermochem was not extracted correctly
-        #Check 2: if any item above in not None but is a numpy array [isinstance(x, np.ndarray)]-  ensure that none of its elements are non-zero and not None [np.all()]. If they are, vib freqs were not extracted properly
-        
-        if all(x is not None and (not isinstance(x, np.ndarray) or np.all(x)) for x in [charge, multi, Eelec, sigma_OR, mass, m_SI, total_dipole, dipole_x, dipole_y, dipole_z, dipole_ax, vibs_array, ZPE]):
+        except (IndexError, TypeError):
+            RotA = 'N/A'
+            RotB = 'N/A'
+            RotC = 'N/A'
+
+        #if the job terminated normally
+        if normal_term:
             
             #calculate parition functions from input data if thermochem was requested
             if thermochem_flag:
                 
-                q_trans, q_rot, q_vib, q_elec, rot_type = calc_partition_function(filename, m_SI, RotABC, sigma_OR, vibs_array, multi, T, p)
+                #try to calculate thermochemistry
+                try:
+                    q_trans, q_rot, q_vib, q_elec, rot_type = calc_partition_function(filename, m_SI, RotABC, sigma_OR, vibs_array, multi, T, p)
 
-                #calculate thermochemical corrections
-                Ecorr, Total_E, Hcorr, Total_H, Gcorr, Total_G, Total_S = calc_thermochemistry(vibs_array, q_trans, q_rot, q_vib, q_elec, ZPE, Eelec, T, p, rot_type)
-                Gibbs_list.append(Total_G)
+                    #calculate thermochemical corrections
+                    Ecorr, Total_E, Hcorr, Total_H, Gcorr, Total_G, Total_S = calc_thermochemistry(vibs_array, q_trans, q_rot, q_vib, q_elec, ZPE, Eelec, T, p, rot_type)
+                    Gibbs_list.append(Total_G)
+                
+                #if thermochem corrections cannot be calculated (such as because of a incomplete job, write placeholders)
+                except Exception as e:
+                    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error during the calculation of thermochemistry from {filename}: {e}. Please report this issue along with your .out file to the issues section of the Github repo.')
 
                 #if a file contians imaginary frequencies, extract their values and write them to a list for printing laster on. This is useful for determining whether a DFT job needs to be resubmitted.
                 if n_imag > 0:
@@ -388,68 +375,58 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                         master_imag_freq_list.append([filename, imag_freqs]) #append list of imag freqs to master imag_freqs alongside the associated filename
                         
                     except Exception as e:
-                        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error extracting imaginary frequency data from {filename}: {e}')
+                        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error extracting imaginary frequency data from {filename}: {e}. Please report this issue along with your .out file to the issues section of the Github repo.')
                         QApplication.processEvents()
                         pass
 
                 #placeholder for relative energy
                 Erel = 123.0
 
-                #Check if polariz and spin contamination are None and replace it with a placeholder if so
-                polariz_value = 'N/A' if polariz is None else polariz
-                spin_contam_value = 'N/A' if spin_contam is None else spin_contam
-
                 #Prepare the values to be written
-                values = [filename, n_imag, Eelec, ZPE, Ecorr, Hcorr, Gcorr, Total_ZPE, Total_E, Total_H, Total_S * T, Total_G, Erel, RotABC[0]/100, RotABC[1]/100, RotABC[2]/100, sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, q_trans, q_rot, q_vib, q_elec, spin_contam_value]
-        
-        #if thermochem was not requested (like in a single point energy calculation), return N/A 
-        elif not thermochem_flag and Eelec:
-            
-            #Check if polariz and spin contamination are None and replace it with a placeholder if so
-            polariz_value = 'N/A' if polariz is None else polariz
-            spin_contam_value = 'N/A' if spin_contam is None else spin_contam
+                values = [filename, n_imag, Eelec, ZPE, Ecorr, Hcorr, Gcorr, Total_ZPE, Total_E, Total_H, Total_S * T, Total_G, Erel,  RotA, RotB, RotC, sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz, q_trans, q_rot, q_vib, q_elec, spin_contam]
 
-            Gibbs_list.append(12345.0)
-            values = [filename, 'N/A', Eelec, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', -12345.0, -12345.0, RotABC[0]/100, RotABC[1]/100, RotABC[2]/100, 'N/A', dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam_value]
-        
-        #if the single point energy calculation did not finish
-        elif not thermochem_flag and not Eelec:
-            values = [filename, -12345.0, 12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, polariz_value, -12345.0, -12345.0, -12345.0, -12345.0, spin_contam_value]
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {filename} is a single point energy calculation that did not finish. -12345.0 wil lbe written as a placeholder.')
-
-        #if the file is missing any info that is checked for and did request thermochem, write -12345.0 as a placeholder'
-        else:
-            
-            #Check if polariz and spin contamination are None and replace it with a placeholder if so
-            polariz_value = 'N/A' if polariz is None else polariz
-            spin_contam_value = 'N/A' if spin_contam is None else spin_contam
-            
-            #all above checks will be failed for atomic entities. So, if the thermochem flag is check, try to calcualte thermochem for the atom. If it fails for any reason, write the placeholder
-            if thermochem_flag:              
-                try:
-                    q_trans, q_rot, q_vib, q_elec, rot_type = calc_partition_function(filename, m_SI, RotABC, sigma_OR, vibs_array, multi, T, p)
-
-                    #calculate thermochemical corrections
-                    Ecorr, Total_E, Hcorr, Total_H, Gcorr, Total_G, Total_S = calc_thermochemistry(vibs_array, q_trans, q_rot, q_vib, q_elec, ZPE, Eelec, T, p, rot_type)
-                    Gibbs_list.append(Total_G)
-                    
-                    #placeholder for relative energy
-                    Erel = 123.0
-
-                    #Define ZPE externally because it will be None from the initializations
-                    ZPE = 0
-                    Total_ZPE = Eelec + ZPE
-                    values = [filename, n_imag, Eelec, ZPE, Ecorr, Hcorr, Gcorr, Total_ZPE, Total_E, Total_H, Total_S * T, Total_G, Erel, RotABC[0]/100, RotABC[1]/100, RotABC[2]/100, sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, q_trans, q_rot, q_vib, q_elec, spin_contam_value]
-
-                #if thermochem corrections cannot be calculated (such as because of a incomplete job, write placeholders)
-                except:
-                    Gibbs_list.append(12345.0)
-                    values = [filename, -12345.0, Eelec, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, polariz_value, -12345.0, -12345.0, -12345.0, -12345.0, spin_contam_value]                    
- 
+            #if thermochem was not requested (like in a single point energy calculation or geometry optimization): 
             else:
-                Gibbs_list.append(12345.0)
-                values = [filename, -12345.0, Eelec, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0, -12345.0,-12345.0, -12345.0, -12345.0, -12345.0, dipole_x, dipole_y, dipole_z, total_dipole, polariz_value, -12345.0, -12345.0, -12345.0, -12345.0, spin_contam_value]
+
+                thermochem_not_requested.append(filename)
+                
+                #if an electronic energy is found
+                if Eelec:
+                    values = [filename, 'N/A', Eelec, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', RotA, RotB, RotC, 'N/A', dipole_x, dipole_y, dipole_z, total_dipole, polariz, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam]
+
+                #I don't know how a job could terminate normally but also enter this block, but YOLO. 
+                else:
+                    values = [filename, 'N/A', 12345.0, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', RotA, RotB, RotC, 'N/A', dipole_x, dipole_y, dipole_z, total_dipole, polariz, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam]
+                    print(f'Congratulations. {filename} entered a block of code that I did not think was possible. Please report this to the issues section of the Github repo.')
         
+        #if the ORCA job did not finish
+        else:
+
+            #did they get to the point where they calcualted vib freqs? Sometimes the job terminates due to walltime during the CHELPG charge calculation step
+            #We can check for this to see if a non-None ZPE was returned.
+            #ZPE requires the extraction of all vib frequencies, and will only be updated to a non-None value if vib freqs are found. 
+            if thermochem_flag and ZPE:
+                abnormal_term_wVibs_list.append(filename)
+
+            else:
+                abnormal_term_list.append(filename)
+
+            #if the job is a single point energy calculation did not finish
+            if not thermochem_flag and not Eelec:
+                values = [filename, 'N/A', 12345.0, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', RotA, RotB, RotC, sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam]
+            
+            #if the job is an optimization that didn't finish
+            else:
+                values = [filename, 'N/A', Eelec, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', RotA, RotB, RotC, sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam]
+        
+        values = [val if val is not None else 'N/A' for val in values]
+
+        new_row = pd.DataFrame([values], columns=properties)
+        new_row = new_row.dropna(axis=1, how='all')
+
+        #append values to Dataframe
+        df = pd.concat([df, new_row], ignore_index=True)
+
         #debugging for when problems arise
         '''
         variable_names = ['filename', 'n_imag', 'Eelec', 'ZPE', 'Ecorr', 'Hcorr', 'Gcorr', 'Total_ZPE', 'Total_E', 'Total_H', 'Total_S*T', 'Total_G', 'Erel', 'RotA/100', 'RotB/100', 'RotC/100', 'sigma_OR', 'dipole_x', 'dipole_y', 'dipole_z', 'total_dipole', 'polariz_value', 'q_trans', 'q_rot', 'q_vib', 'q_elec', 'spin_contam_value']
@@ -464,55 +441,65 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
             df.to_excel(writer, sheet_name=f'{filename}', index=False)
         '''
 
-        #Create a format string for consistent spacing, then write the data to the output.csv
-        format_str = '{}'.format(','.join(['{:<25}'] * len(values)) + ',\n')
+    #Calculate the minimum Gibbs energy after all the energies have been extracted and all non entries are removed (liek the N/A strings)
+    numeric_gibbs_list = np.array([float(g) for g in Gibbs_list if isinstance(g, (int, float))])
 
-        with open(output_csv, 'a') as opf:
-            opf.write(format_str.format(*values))
+    #ensure that the gibbs list isn't empty - otherwise it won't have a minimum!
+    if numeric_gibbs_list.size > 0:
+        min_Gibbs = np.min(numeric_gibbs_list)
+    else:
+        min_Gibbs = 0
 
-    #Calculate the minimum Gibbs energy after all the energies have been extracted and are located in a convienent spot
-    min_Gibbs = np.min(Gibbs_list)
+    #replace all N/A entries in the Total Gibbs, Enthalpy, entropy, ZPE, etc with infinity for sorting purposes
+    columns_to_sort_energies = ['Total Gibbs Energy', 'Total Enthalpy', 'Total Thermal Energy', 'Total Entropy (T*S)', 'Total ZPE']
 
-    #Read the CSV into a pandas DataFrame
-    df = pd.read_csv(output_csv)
-
-    #Replace the placeholder relative energies with the actual relative energies in the DataFrame
-    df['Relative Gibbs Energy    '] = (df['Total Gibbs Energy       '] - min_Gibbs) * 2625.4996395 #Conversion for Hartree to kJ/mol - can be changed to user preference
-
+    for column in columns_to_sort_energies:
+        df[column] = pd.to_numeric(df[column], errors='coerce')
+        df[column] = df[column].fillna(np.inf)
+    
+    #Replace the placeholder relative energies with the actual relative energies in the DataFrame, then temporarily fill NaNs with infinity (needed for calculation of rel gibbs)
+    df['Relative Gibbs Energy'] = (df['Total Gibbs Energy'] - min_Gibbs) * 2625.4996395 #Conversion for Hartree to kJ/mol - can be changed to user preference
+    
     #Sort files based on user input
     if sort_by == 'G':
         #Sort the DataFrame based on 'Relative Gibbs Energy'
-        df = df.sort_values(by='Relative Gibbs Energy    ')
+        df = df.sort_values(by='Relative Gibbs Energy')
 
     if sort_by == 'H':
         #Sort the DataFrame based on 'Total Enthalpy'
-        df = df.sort_values(by='Total Enthalpy           ')
+        df = df.sort_values(by='Total Enthalpy')
 
     if sort_by == 'E':
         #Sort the DataFrame based on 'Total Thermal Energy'
-        df = df.sort_values(by='Total Thermal Energy     ')
+        df = df.sort_values(by='Total Thermal Energy')
 
     if sort_by == 'S':
         #Sort the DataFrame based on 'Total Thermal Energy'
-        df = df.sort_values(by='Total Entropy            ')
+        df = df.sort_values(by='Total Entropy (T*S)')
 
     if sort_by == 'Z':
-        df = df.sort_values(by='Total ZPE                ')
-
-    #Write the updated DataFrame back to the CSV with consistent spacing
-    with open(output_csv, 'w') as opf:
-        opf.write(header.format(*properties))  #Write the header first
-
-        for _, row in df.iterrows():
-            values = list(row)
-            opf.write(format_str.format(*values))
+        df = df.sort_values(by='Total ZPE')
     
+    #replace all infinite values with N/A
+    for column in columns_to_sort_energies:
+        df[column] = df[column].replace(np.inf, 'N/A')
+
+    #Create a unique output file name
+    output_csv = os.path.join(directory, f'Thermo_data_{int(T)}K_{int(p)}Pa_{str(np.round(vib_scl, 4)).replace(".","-")}vibscl.csv')
+
+    i = 2
+    while os.path.isfile(output_csv):
+        output_csv = os.path.join(directory, f'Thermo_data_{int(T)}K_{int(p)}Pa_{str(np.round(vib_scl, 4)).replace(".","-")}vibscl_{i}.csv')
+        i += 1
+    
+    df.to_csv(output_csv, index=False)
+
     #Inform users via the print window of any abnormal terminations, missing thermochemistry, and imaginary frequencies
     if len(thermochem_not_requested) > 0:
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Vibrational frequencies were not requested from the following files; N/A is being written as a placeholder for relevant quantieis:\n{", ".join(thermochem_not_requested)}.\n')
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Vibrational frequencies were not requested from the following files; N/A is being written as a placeholder for relevant quantities:\n{", ".join(thermochem_not_requested)}.\n')
 
     if len(abnormal_term_list) > 0:
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The following files did not terminate normally, and conseuqently, will have -12345.0 being written in place of missing values:\n{", ".join(abnormal_term_list)}.\n')
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The following files did not terminate normally, and consequently, will have "N/A" being written in place of missing values:\n{", ".join(abnormal_term_list)}.\n')
     
     if len(abnormal_term_wVibs_list) > 0:
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Of the files that did not terminate normally, the following did contain vibrational frequencies, and thus, likely reached walltime during a subsequent calculation step (e.g., CHELPG charge calcualtion):\n{", ".join(abnormal_term_wVibs_list)}.\n')
@@ -527,8 +514,8 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
 #external testing
 if __name__ == '__main__':
 
-    directory = r'C:\Users\Chris\OneDrive - University of Waterloo\Waterloo\Manuscripts\2024\Heterobimetallic_Coordination_Derek\Calcs_ORCA6\CuCu\Freq'
-    sort_by = 'F'
+    directory = r'C:\Users\Chris\OneDrive - University of Waterloo\Waterloo\Manuscripts\2024\Heterobimetallic_Coordination_Derek\Calcs_ORCA6\Fragments\DFT_OptFreq'
+    sort_by = 'Z'
     T = 298.15
     p = 100000.
     vib_scl = 1.00
