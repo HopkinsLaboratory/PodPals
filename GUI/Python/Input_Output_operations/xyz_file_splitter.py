@@ -136,11 +136,11 @@ def xyz_file_splitter(file, basename, export_type):
         formatted_geom_lines = []
         for line in geom_lines:
             parts = line.split()
-            label = parts[0].ljust(4)  
+            label = parts[0].ljust(4)
             x = f"{float(parts[1]):>{15}.8f}"  
             y = f"{float(parts[2]):>{15}.8f}"  
             z = f"{float(parts[3]):>{15}.8f}"  
-            formatted_geom_lines.append(f"{label}{x}{y}{z}")
+            formatted_geom_lines.append(f"{label}{x}{y}{z}\n")
         
         filename_prefix = basename if not basename.endswith('_') else basename[:-1] #ensure basename ends with an underscore for readability of resulting filenames
 
@@ -151,17 +151,18 @@ def xyz_file_splitter(file, basename, export_type):
         with open(export_file_path, 'w') as opf:
             if export_type == 'gjf':
                 opf.writelines(['#opt pm7\n\n', f'{filename_prefix}_{i}\n\n', '1 1\n'])  #Header with default charge and multiplicity
-                opf.write(formatted_geom_lines)
+                opf.writelines(formatted_geom_lines)
                 opf.write('\n\n\n')  #Conformer geometry
             
             elif export_type == 'xyz':
                 opf.write(f'{len(geom_lines)}\n{filename_prefix}_{i} {energy}\n')  #Header with default charge and multiplicity
                 opf.write(formatted_geom_lines)
-                opf.write('\n\n\n')  #Conformer geometry                
+                opf.write('\n\n')  #Conformer geometry                
 
             elif export_type == 'inp':
                 opf.writelines(['! TPSS D3BJ TightOpt Def2-SVP\n', '%maxcore 3000\n\n', '%pal nprocs 8\nend\n\n', '*xyz 1 1\n'])  #Header with default charge and multiplicity
-                opf.writelines('\n'.join(formatted_geom_lines) + '\n*\n\n\n')  #Conformer geometry
+                opf.writelines(formatted_geom_lines) #Conformer geometry
+                opf.write('*\n\n\n')  
 
         #Append filename and energy data to the pandas df
         df_energies = pd.concat([df_energies, pd.DataFrame([{'Filename': f'{filename_prefix}_{i}.{export_type}', 'Energy / hartree': energy}])], ignore_index=True)
@@ -193,8 +194,8 @@ def xyz_file_splitter(file, basename, export_type):
     
 #external testing
 if __name__ == '__main__':
-    file = r'C:\Users\Chris\OneDrive - University of Waterloo\Waterloo\Manuscripts\2024\Leipzig_PIC\Calculated_IR_Spectra\Selegiline\SR-Selegiline\GOAT\SR_Selegiline.finalensemble.xyz'
-    basename = 'SR_Selegiline'
-    export_type = 'gjf'
+    file = r'E:\OneDrive - University of Waterloo\Waterloo\Manuscripts\2024\Leipzig_PIC\Calculated_IR_Spectra\Ser\RS-Ser\GOAT\RS_Ser_GOAT_0deg.finalensemble.xyz'
+    basename = 'RS_Ser_GOAT_0deg'
+    export_type = 'inp'
 
     xyz_file_splitter(file, basename, export_type)
