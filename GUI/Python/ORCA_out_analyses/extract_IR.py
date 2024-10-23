@@ -107,8 +107,6 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, IR_
     '''Main workflow'''
     
     stime = time.time()
-    df_norm = pd.DataFrame()  # For normalized spectra
-    df_unorm = pd.DataFrame()  # For unnormalized spectra
 
     #get list of filenames, and check if the directory does not contain any .out files
     filenames = [x for x in os.listdir(directory) if x.lower().endswith('.out') and '_atom' not in x.lower()]
@@ -121,6 +119,8 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, IR_
     QApplication.processEvents()
 
     # Initialize lists to store data only for successfully processed files
+    unorm_data = {}  # Unnormalized spectra
+    norm_data = {}  # Normalized spectra
     successful_filenames = []
     successful_energies = []
     successful_temps = []
@@ -138,8 +138,12 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, IR_
 
             #Add the broadened spectrum to the DataFrame with the file title as the column header - broaden_spectrum returns None for freq_grid, broadened_spectrum if the max intensity of all IR freqs is zero. 
             if freq_grid is not None:
-                df_unorm[os.path.basename(file)] = unorm_spectrum
-                df_norm[os.path.basename(file)] = norm_spectrum
+                
+                filename = os.path.basename(file)
+                unorm_data[filename] = unorm_spectrum #collect unnorm spectrum
+                norm_data[filename] = norm_spectrum #collect normalized spectrum
+                
+                #append succesfully processed files to unique lists for later indexing of calculating relative populations
                 successful_filenames.append(os.path.basename(file))
                 successful_energies.append(energy)
                 successful_temps.append(temp)
@@ -153,6 +157,13 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, IR_
             failed_files.append(file)
             continue
 
+    # create the norm and unnorm spectra dataframes
+    df_unorm = pd.concat([pd.Series(data, name=key) for key, data in unorm_data.items()], axis=1)
+    df_unorm.insert(0, 'Wavenumber / cm**-1', freq_grid)  
+
+    df_norm = pd.concat([pd.Series(data, name=key) for key, data in norm_data.items()], axis=1)
+    df_norm.insert(0, 'Wavenumber / cm**-1', freq_grid) 
+
     #Compute the Boltzmann Weights
     emin = min(successful_energies)
     tmin = min(successful_temps) #use minimum temp from all temps. These should all be consistent anyways
@@ -160,6 +171,7 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, IR_
     populations = [np.exp(-E / (8.3145E-3 * tmin)) for E in rel_energies]
     total_population = sum(populations)
     relative_populations = [pop / total_population for pop in populations]
+   
    
    # Collect data for the populations sheet - need to use "successful" lists to ensure that each array is the same size. 
     population_data = {
@@ -189,13 +201,9 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, IR_
     with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
         
         #write unnormalizaed spectra
-        df_unorm['Wavenumber'] = freq_grid
-        df_unorm = df_unorm[['Wavenumber'] + [col for col in df_unorm.columns if col != 'Wavenumber']]
         df_unorm.to_excel(writer, sheet_name='Unnormalized Spectra', index=False)
 
         #write normalized spectra
-        df_norm['Wavenumber'] = freq_grid
-        df_norm = df_norm[['Wavenumber'] + [col for col in df_norm.columns if col != 'Wavenumber']]
         df_norm.to_excel(writer, sheet_name='Normalized Spectra', index=False)
 
         #write boltzmann weighted spectra (norm and unorm)
@@ -273,7 +281,7 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, IR_
 #external testing
 if __name__ == "__main__":
     #Specify the directory containing .out files
-    directory = r'E:\OneDrive - University of Waterloo\Waterloo\Manuscripts\2024\Leipzig_PIC\Calcs_Iteration2\Met-OMe\RS_Met-OMe'
+    directory = r'E:\OneDrive - University of Waterloo\Waterloo\Manuscripts\2024\Leipzig_PIC\Calcs_Iteration2\Met-OMe\SS_Met-OMe'
 
     #Specify the FWHM for broadening
     fwhm_value = 3
