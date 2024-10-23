@@ -1569,9 +1569,18 @@ class Extract_IR_SpectraTab(QWidget):
         layout.addLayout(peak_options)
         layout.addSpacing(5)
 
-        #Normalization Checkbox
-        self.normalization_checkbox = QCheckBox("Normalize spectra?")
-        layout.addWidget(self.normalization_checkbox)
+        #Output excel file basename
+        IR_basename_layout = QHBoxLayout()
+        
+        IR_output_label = QLabel('.xlsx output basename:')
+        self.IR_basename_input = QLineEdit()
+        self.IR_basename_input.setPlaceholderText("basename of excel file to be written (no extension or path)")
+        
+        IR_basename_layout.addWidget(IR_output_label)
+        IR_basename_layout.addWidget(self.IR_basename_input)
+        
+        layout.addLayout(IR_basename_layout)
+        layout.addSpacing(5)
 
         #Plotting Checkbox
         self.plotting_checkbox = QCheckBox("Plot spectra externally?")
@@ -1603,7 +1612,7 @@ class Extract_IR_SpectraTab(QWidget):
         upper_bound = self.upper_bound_input.value()
         step_size = self.step_size_input.value()
         vib_scl = self.vib_scl_input.value()
-        normalization = self.normalization_checkbox.isChecked() #true if checked, false if not
+        IR_output_basename = self.IR_basename_input.text()
         plotting = self.plotting_checkbox.isChecked() #true if checked, false if not
 
         #Check if the input values meet logical checks
@@ -1632,7 +1641,7 @@ class Extract_IR_SpectraTab(QWidget):
             return
         
         #if all checks pass, proceed to extract the IR spectra from each .out file
-        extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, normalization, plotting, vib_scl)
+        extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, IR_output_basename, plotting, vib_scl)
 
 class Extract_TDDFT_VG_SpectraTab(QWidget):
     def __init__(self, text_redirector, parent=None):

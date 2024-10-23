@@ -11,7 +11,7 @@ matplotlib.use('QtAgg') #Use matplotlib backend that is compatible w/ PyQt6 to p
 matplotlib.rcParams.update({'font.size': 12})
 matplotlib.rcParams.update({'lines.linewidth': 1.5})
 
-def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, normalization, plotting, scale_freq = 1.):
+def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, IR_output_basename, plotting, scale_freq = 1.):
 
     def extract_ir_freqs(file, scale_freq):
         '''Extracts out the IR spectrum block from an ORCA .out file. Function returns the freq in cm**-1 and the intensity in km/mol as arrays.'''
@@ -41,13 +41,41 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, nor
                 intensity = [float(line[3]) for line in data_lines]
                 return freq, intensity
             
-            except (IndexError, ValueError, TypeError) as e:
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} IR data from {os.path.basename(file)} is in a different format than expect. An error was encountered when trying to parse the freq and intensity: {e}.')
-                print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The first and second lines of the problematic IR block are:\n{data_lines[0]}\n{data_lines[1]}\nProcessing of this file will be skipped.')
+            except Exception as e:
+                #print(f'{datetime.now().strftime("[ %H:%M:%S ]")} IR data from {os.path.basename(file)} could not be processed: {e}.')
+                return None, None
+
+    def extract_gibbs_energy(file):
+        '''Extracts the Gibbs energy and temperature from the ORCA .out file.'''
+        
+        gibbs, temp = None, None
+
+        with open(file, 'r') as f:
+            for line in f:
+                if 'Final Gibbs free energy' in line:
+                    try:
+                        gibbs = float(line.split()[-2])
+                    except ValueError:
+                        break
+                
+                if 'THERMOCHEMISTRY AT' in line:
+                    try:
+                        temp = float(line.split()[2].replace('K', ''))
+                    except (ValueError, IndexError):
+                        break
+            
+            if gibbs is not None and temp is not None:
+                return gibbs, temp
+            else:
                 return None, None
             
-    def broaden_spectrum(file, freq, intensity, fwhm, lower_bound, upper_bound, step_size, normalization):
-        '''Broadens each absoprtion in an IR stick strectrum with a user specified Gaussian FWHM.'''
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No Gibbs free energy found in {os.path.basename(file)}.')
+        
+        return None
+                
+    def broaden_spectrum(file, freq, intensity, fwhm, lower_bound, upper_bound, step_size):
+        '''Broadens each absoprtion in an IR stick strectrum with a user specified Gaussian FWHM.
+        Returns vib freq., intensity, and normalized intensity'''
         #Create a grid from the lower_bound to the upper_bound with 1 cm**-1 spacing
         freq_grid = np.arange(lower_bound, upper_bound + step_size, step_size)
 
@@ -72,14 +100,16 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, nor
            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The extracted spectrum has a maximum value of zero. Please check the IR block {os.path.basename(file)} for correctness.')
            return None, None
 
-        #normalize spectrum if requested
-        if normalization:
-            broadened_spectrum /= max_value 
-
-        return freq_grid, broadened_spectrum
+        #normalize spectrum if requested - but need to return both for Boltzmann weighting
+        norm_broadened_spectrum = broadened_spectrum / max_value 
+        return freq_grid, broadened_spectrum, norm_broadened_spectrum
        
     '''Main workflow'''
     
+    stime = time.time()
+    df_norm = pd.DataFrame()  # For normalized spectra
+    df_unorm = pd.DataFrame()  # For unnormalized spectra
+
     #get list of filenames, and check if the directory does not contain any .out files
     filenames = [x for x in os.listdir(directory) if x.lower().endswith('.out') and '_atom' not in x.lower()]
 
@@ -90,97 +120,137 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, nor
     print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Starting extraction of IR spectra from {len(filenames)} ORCA .out files...')
     QApplication.processEvents()
 
-    stime = time.time()
-
-    #Create a Pandas DataFrame to store the results
-    df = pd.DataFrame()
+    # Initialize lists to store data only for successfully processed files
+    successful_filenames = []
+    successful_energies = []
+    successful_temps = []
+    failed_files = []
 
     for file in filenames:
 
-        #Extract IR spectrum from the file - extract_ir_freqs returns None for freq, intensity if an .out file does not contain any IR freq data
+        #Extract IR spectrum and gibbs energy from the file - extract_ir_freqs returns None for freq, intensity if an .out file does not contain any IR freq data
         freq, intensity = extract_ir_freqs(os.path.join(directory, file),scale_freq)
+        energy, temp = extract_gibbs_energy(os.path.join(directory, file))
 
         #Broaden the spectrum only if IR data was sucessfuly extracted from the file
-        if freq is not None and intensity is not None:
-            freq_grid, broadened_spectrum = broaden_spectrum(file, freq, intensity, fwhm, lower_bound, upper_bound, step_size, normalization)
+        if freq is not None and intensity is not None and energy is not None:
+            freq_grid, unorm_spectrum, norm_spectrum = broaden_spectrum(file, freq, intensity, fwhm, lower_bound, upper_bound, step_size)
 
             #Add the broadened spectrum to the DataFrame with the file title as the column header - broaden_spectrum returns None for freq_grid, broadened_spectrum if the max intensity of all IR freqs is zero. 
-            if freq_grid is not None and broadened_spectrum is not None:
-                df[os.path.basename(file)] = broadened_spectrum
+            if freq_grid is not None:
+                df_unorm[os.path.basename(file)] = unorm_spectrum
+                df_norm[os.path.basename(file)] = norm_spectrum
+                successful_filenames.append(os.path.basename(file))
+                successful_energies.append(energy)
+                successful_temps.append(temp)
 
+            else:
+                failed_files.append(file)
+                continue
+        
         #If IR data cannot be found and/or the maximum intensity of the IR freqs is zero, skip to the next file
         else:
+            failed_files.append(file)
             continue
 
-    #Add the wavenumber column to the DataFrame
-    df['Wavenumber'] = freq_grid
+    #Compute the Boltzmann Weights
+    emin = min(successful_energies)
+    tmin = min(successful_temps) #use minimum temp from all temps. These should all be consistent anyways
+    rel_energies = [(E - emin) * 2625.5 for E in successful_energies]
+    populations = [np.exp(-E / (8.3145E-3 * tmin)) for E in rel_energies]
+    total_population = sum(populations)
+    relative_populations = [pop / total_population for pop in populations]
+   
+   # Collect data for the populations sheet - need to use "successful" lists to ensure that each array is the same size. 
+    population_data = {
+        'Filename': [f for f in successful_filenames],
+        'Gibbs Energy (Eh)': successful_energies,
+        'Relative Energy (kJ/mol)': rel_energies,
+        'Population': populations,
+        'Relative Population': relative_populations
+    }
+    df_populations = pd.DataFrame(population_data)
 
-    #Reorder columns
-    df = df[['Wavenumber'] + [col for col in df.columns if col != 'Wavenumber']]
+    # Calculate Boltzmann-weighted spectrum
+    bw_spectrum = np.zeros_like(freq_grid, dtype=float)
+    for i, col in enumerate(df_unorm.columns[1:]):  # Skip first column, which is wavenumber
+        bw_spectrum += relative_populations[i] * df_unorm[col].to_numpy()
 
-    #Write the DataFrame to an Excel file, unsuring that it does not overwrite previous data
-    if normalization:
-        output_file = os.path.join(directory, f'output_spectrum_scaled_{str(scale_freq).replace(".", "-")}_fwhm_{fwhm}cm_Norm.xlsx')
-
-    else:
-        output_file = os.path.join(directory, f'output_spectrum_scaled_{str(scale_freq).replace(".", "-")}_fwhm_{fwhm}cm.xlsx')
-
+    norm_bw_spectrum = bw_spectrum / np.max(bw_spectrum)
+    
+    # Generate unique output file name to prevent overwriting
     i = 2 
+    output_file = os.path.join(directory, f'{IR_output_basename}_scl_{scale_freq}_fwhm_{fwhm}cm.xlsx')
     while os.path.isfile(output_file):
-        if normalization:
-            output_file = os.path.join(directory, f'output_spectrum_scaled_{str(scale_freq).replace(".", "-")}_fwhm_{fwhm}cm_Norm_v{i}.xlsx')
-        else:
-            output_file = os.path.join(directory, f'output_spectrum_scaled_{str(scale_freq).replace(".", "-")}_fwhm_{fwhm}cm_v{i}.xlsx')
-        i += 1
+        output_file = os.path.join(directory, f'{IR_output_basename}_scl_{scale_freq}_fwhm_{fwhm}cm_v{i}.xlsx')
+        i += 1     
 
-    #write data to file
-    df.to_excel(output_file, index=False)
+    # Add Boltzmann-weighted spectrum to a new sheet in the Excel file
+    with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
+        
+        #write unnormalizaed spectra
+        df_unorm['Wavenumber'] = freq_grid
+        df_unorm = df_unorm[['Wavenumber'] + [col for col in df_unorm.columns if col != 'Wavenumber']]
+        df_unorm.to_excel(writer, sheet_name='Unnormalized Spectra', index=False)
 
-    ftime = time.time()
-    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} IR spectra from {len(filenames)} .out files have been processed in {np.round(ftime - stime, 2)} seconds.')
+        #write normalized spectra
+        df_norm['Wavenumber'] = freq_grid
+        df_norm = df_norm[['Wavenumber'] + [col for col in df_norm.columns if col != 'Wavenumber']]
+        df_norm.to_excel(writer, sheet_name='Normalized Spectra', index=False)
+
+        #write boltzmann weighted spectra (norm and unorm)
+        pd.DataFrame({'Wavenumber': freq_grid, 'BW Spectrum': bw_spectrum, 
+                      'Normalized BW Spectrum': norm_bw_spectrum}).to_excel(writer, sheet_name='Boltzmann Weighted', index=False)
+
+        #write populations of each isomer
+        df_populations.to_excel(writer, sheet_name=f'Populations @ {int(tmin)}K', index=False)
 
     #Plotting
     if plotting:
 
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Extracted IR spectra will be plotted momentarily...')
-        plt.figure(figsize=(16, 10))
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 10), sharex=True, gridspec_kw={'height_ratios': [3, 1]})
 
         #initialize list to store filenames for generating plot legend
         labels = []
 
-        #Loop through each spectrum in the DataFrame (excluding 'Wavenumber')
-        for column in df.columns:
+        # Plot unnormalized spectra in the first subplot
+        for column in df_unorm.columns:
             if column != 'Wavenumber':
-                plt.plot(df['Wavenumber'], df[column], label=column)
-                
-                #Check if the label length exceeds a maximum length so that the legend doesn't get hella cluttered
+                ax1.plot(df_unorm['Wavenumber'], df_unorm[column], label=column)
+
+                # Generate a short label for the legend if needed
                 if len(column) > 20:
-                    match = re.search(r"(\d+)(?!.*\d)", column) #regex to look for the last number in a filename
+                    match = re.search(r"(\d+)(?!.*\d)", column)  # Regex to find the last number
                     basename = column.split('_')[0]
                     
                     if match and basename:
-                        new_label = f'{basename}_{match.group(1)}'  #Use first text preceeded by an underscore and the last number as the legend entry
-
+                        new_label = f'{basename}_{match.group(1)}'
                     elif match and not basename:
-                        new_label = f'File_{match.group(1)}'  #If no underscores in fileanme, use the 'File' prefix and the last number
-
+                        new_label = f'File_{match.group(1)}'
                     else:
-                        new_label = column[(int(-1 * np.ceil(len(column) * 0.25))):-4] #Take first 25% of characters in the filename and remove the file extension [:-4]... users can adjust this number if they don't like it
-                
+                        new_label = column[:int(np.ceil(len(column) * 0.25))]  # Use 25% of filename
+                        
                 else:
                     new_label = column
-                
+
                 labels.append(new_label)
 
-        #Customizing the plot
-        plt.xlabel('Wavenumber (cm-1)')
-        plt.ylabel('Intensity')
-        plt.title('Extracted IR Spectra')
+        # Customize the first subplot
+        ax1.set_ylabel('Intensity (Unnormalized)')
+        ax1.set_title('Unnormalized IR Spectra')
+        ax1.legend(labels=labels, loc='upper left', bbox_to_anchor=(1, 1))
+
+        # Plot the normalized Boltzmann-weighted spectrum in the second subplot
+        ax2.plot(freq_grid, norm_bw_spectrum, color='purple', linewidth=2, label='Normalized BW Spectrum')
         
-        #bbox_to_anchor to place the legend outside, adjusting 'loc' and 'bbox_to_anchor' as needed
-        plt.legend(labels=labels, loc='upper left', bbox_to_anchor=(1, 1))
-        
-        #Write plot to file with the same basename as the corresponding .xlsx
+        # Customize the second subplot
+        ax2.set_xlabel('Wavenumber (cm⁻¹)')
+        ax2.set_ylabel('Intensity (Normalized)')
+        ax2.legend(loc='upper left')
+
+        # Adjust layout and save the plot
+        plt.tight_layout()
         plt_file = output_file.replace('.xlsx', '.png')
 
         #save the plot and show it to the user
@@ -194,13 +264,19 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, nor
         plt.tight_layout()
         plt.show()
 
+    if len(failed_files) > 0:
+        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} IR spectra could not be processed from {len(failed_files)} files. These have been omitted from the IR extraction:\n{",\n".join(failed_files)}')
+
+    ftime = time.time()
+    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} IR spectra from {len(filenames)} .out files have been processed in {np.round(ftime - stime, 2)} seconds.')
+
 #external testing
 if __name__ == "__main__":
     #Specify the directory containing .out files
-    directory = r'D:\OneDrive\OneDrive - University of Waterloo\Waterloo\GitHub\ORCA_Analysis_GUI\Sample_Files\T9_ORCA_Vib_Spectrum_Analyzer'
+    directory = r'E:\OneDrive - University of Waterloo\Waterloo\Manuscripts\2024\Leipzig_PIC\Calcs_Iteration2\Met-OMe\RS_Met-OMe'
 
     #Specify the FWHM for broadening
-    fwhm_value = 8
+    fwhm_value = 3
 
     #Specify the lower and upper bounds
     lower_bound_value = 500 #must be an integer
@@ -208,13 +284,13 @@ if __name__ == "__main__":
     step_size = 1 #must be an integer
 
     #harmonic scaling factor
-    scale_freq = 0.9875
-
-    #option to normalize all calculated spectra to a maximum intensity of 1
-    normalization = False
+    scale_freq = 1.00
 
     #option to plot spectra
     plotting = False
 
+    #basename for output file
+    out_basename = 'test'
+
     #Process the .out files and write the results to an Excel file
-    extract_IR_spectra(directory, fwhm_value, lower_bound_value, upper_bound_value, step_size, normalization, plotting, scale_freq)
+    extract_IR_spectra(directory, fwhm_value, lower_bound_value, upper_bound_value, step_size, out_basename, plotting, scale_freq)
