@@ -207,7 +207,7 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, IR_
         df_norm.to_excel(writer, sheet_name='Normalized Spectra', index=False)
 
         #write boltzmann weighted spectra (norm and unorm)
-        pd.DataFrame({'Wavenumber': freq_grid, 'BW Spectrum': bw_spectrum, 
+        pd.DataFrame({'Wavenumber / cm**-1': freq_grid, 'BW Spectrum': bw_spectrum, 
                       'Normalized BW Spectrum': norm_bw_spectrum}).to_excel(writer, sheet_name='Boltzmann Weighted', index=False)
 
         #write populations of each isomer
@@ -224,8 +224,8 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, IR_
 
         # Plot unnormalized spectra in the first subplot
         for column in df_unorm.columns:
-            if column != 'Wavenumber':
-                ax1.plot(df_unorm['Wavenumber'], df_unorm[column], label=column)
+            if column != 'Wavenumber / cm**-1':
+                ax1.plot(df_unorm['Wavenumber / cm**-1'], df_unorm[column], label=column)
 
                 # Generate a short label for the legend if needed
                 if len(column) > 20:
@@ -253,12 +253,11 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, IR_
         ax2.plot(freq_grid, norm_bw_spectrum, color='purple', linewidth=2, label='Normalized BW Spectrum')
         
         # Customize the second subplot
-        ax2.set_xlabel('Wavenumber (cm⁻¹)')
+        ax2.set_xlabel('Wavenumber / cm**-1)')
         ax2.set_ylabel('Intensity (Normalized)')
         ax2.legend(loc='upper left')
 
         # Adjust layout and save the plot
-        plt.tight_layout()
         plt_file = output_file.replace('.xlsx', '.png')
 
         #save the plot and show it to the user
@@ -267,10 +266,6 @@ def extract_IR_spectra(directory, fwhm, lower_bound, upper_bound, step_size, IR_
         except FileExistsError:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {os.path.basename(plt_file)} already exists within the output directory. You can save the plot manually from the plot that shows.')
             pass
-
-        #show the plot
-        plt.tight_layout()
-        plt.show()
 
     if len(failed_files) > 0:
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} IR spectra could not be processed from {len(failed_files)} files. These have been omitted from the IR extraction:\n{",\n".join(failed_files)}')
