@@ -165,7 +165,7 @@ if __name__ == '__main__':
     check_git()
 
     #check that all required python modules are installed - added pyarrow to the list as the next iteration of pandas requires PyArrow
-    required_packages = ['importlib', 'numpy', 'scipy', 'matplotlib', 'git', 'PyQt6', 'pyarrow', 'pandas', 'openpyxl', 'csv', 'natsort']
+    required_packages = ['importlib', 'numpy', 'scipy', 'matplotlib', 'xlsxwriter', 'git', 'PyQt6', 'pyarrow', 'pandas', 'openpyxl', 'csv', 'natsort']
     check_python_packages(required_packages)
 
 def check_dependencies():
