@@ -42,7 +42,7 @@ def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line
     #check is calc line begns wth a !
     if not calc_line.startswith('!'):
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The input line in {filename} does not start with a !')
-        calc_line = '! ' + calc_line
+        calc_line = f'!  + {calc_line}'
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Fixing it now; the new calc line is:\n {calc_line}')
         QApplication.processEvents()
 
