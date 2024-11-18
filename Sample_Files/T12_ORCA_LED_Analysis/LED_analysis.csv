@@ -1,9 +1,9 @@
 Parameter,Interaction energy (kJ/mol)
 E_int,-0.07367952
-E_int (check),-193.44555285
-E_elprep(HF),+345.01326640
-E_elstat(HF),-461.76464828
+E_int (check),-193.4455529
+E_elprep(HF),345.0132664
+E_elstat(HF),-461.7646483
 E_exch(HF),-51.05572591
 E_disp(C),-26.38210208
-E_nondisp(C),+4.29189376
+E_nondisp(C),4.29189376
 E_trip,-3.54823674

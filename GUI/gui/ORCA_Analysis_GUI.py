@@ -592,26 +592,28 @@ class Generate_ORCAInputTab(QWidget):
         self.mpp_input = QSpinBox()
         self.mpp_input.setMaximum(20000)
         self.mpp_input.setValue(3200)
-        self.mpp_input.setMinimumWidth(60)
+        self.mpp_input.setMinimumWidth(90)
 
         ncores_label = QLabel('#cores:')
         self.ncores_input = QSpinBox()
         self.ncores_input.setMaximum(32)
         self.ncores_input.setValue(8)
-        self.ncores_input.setMinimumWidth(60)
+        self.ncores_input.setMinimumWidth(75)
 
         charge_label = QLabel('Charge:')
         self.charge_input = QSpinBox()
         self.charge_input.setMinimum(-100)
         self.charge_input.setMaximum(100)
         self.charge_input.setValue(1)
-        self.charge_input.setMinimumWidth(60)
+        self.charge_input.setMinimumWidth(75)
+        self.charge_input.setEnabled(False) #set to greyed out on startup as default shoudl be be reading charge from prev files
 
         multiplicity_label = QLabel('Multiplicity:')
         self.multiplicity_input = QSpinBox()
         self.multiplicity_input.setValue(1)
         self.multiplicity_input.setMaximum(100)
-        self.multiplicity_input.setMinimumWidth(60)
+        self.multiplicity_input.setMinimumWidth(75)
+        self.multiplicity_input.setEnabled(False) #set to greyed out on startup as default shoudl be be reading charge from prev files
 
         performance_layout.addWidget(mpp_label)
         performance_layout.addWidget(self.mpp_input)
@@ -630,19 +632,29 @@ class Generate_ORCAInputTab(QWidget):
         performance_layout.addStretch(1)
         
         layout.addLayout(performance_layout)
-        layout.addSpacing(5)
 
-        #Calculation Method         
-        calc_type_label = QLabel('Method:')
-        layout.addWidget(calc_type_label)
+        #Option to use charge and multiplicity from file being read
+        checkbox_layout = QHBoxLayout()
+        self.placeholder = QLabel('')
+        self.cm_checkbox = QCheckBox('Read charge/multiplicity from file?')
+        self.cm_checkbox.setChecked(True) 
+        self.cm_checkbox.stateChanged.connect(self.toggle_cm_inputs)
+        
+        checkbox_layout.addWidget(self.placeholder)
+        checkbox_layout.addSpacing(72)  #Align with Charge label
+        checkbox_layout.addWidget(self.cm_checkbox, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        #Selection box for DFT/CCSDT/Custom methods
+        layout.addLayout(checkbox_layout)
+
+        #Calc method: Selection box for DFT/CCSDT/Custom methods
         calc_layout = QHBoxLayout()
+        calc_type_label = QLabel('Method:')
         self.calc_type_combobox = QComboBox()
         self.calc_type_combobox.addItems(['DFT', 'CCSDT', 'Custom'])
         self.calc_type_combobox.setCurrentIndex(0)
         self.calc_type_combobox.currentIndexChanged.connect(self.update_calc_line)
 
+        calc_layout.addWidget(calc_type_label)
         calc_layout.addWidget(self.calc_type_combobox)
         calc_layout.addSpacing(10)
 
@@ -662,11 +674,13 @@ class Generate_ORCAInputTab(QWidget):
         self.grid_label = QLabel('Grid:')
         self.grid_input = QDoubleSpinBox()
         self.grid_input.setValue(0.1)
+        self.grid_input.setMinimumWidth(90)
         self.grid_input.setEnabled(False)
 
         self.rmax_label = QLabel('Rmax:')
         self.rmax_input = QDoubleSpinBox()
         self.rmax_input.setValue(3.0)
+        self.rmax_input.setMinimumWidth(90)
         self.rmax_input.setEnabled(False)
 
         grid_layout.addWidget(self.esp_charges_checkbox)
@@ -680,14 +694,16 @@ class Generate_ORCAInputTab(QWidget):
         
         layout.addLayout(grid_layout)
 
-        #Checkboxes for Hessian, Polarization, XYZ Coordinates
+        #Checkboxes for Hessian, Polarization, XYZ Coordinates, and writing gjf inputs
         self.calc_hess_checkbox = QCheckBox('Calculate Hessian on first optimization step?')
         self.polarization_checkbox = QCheckBox('Calculate dipole/quadrupole moments?')
         self.write_xyz_checkbox = QCheckBox('Call XYZ coordinates from external .xyz file?')
+        self.write_gjf_checkbox = QCheckBox('Generate .gjf files for viewing in GaussView?')
 
         layout.addWidget(self.calc_hess_checkbox)
         layout.addWidget(self.polarization_checkbox)
         layout.addWidget(self.write_xyz_checkbox)
+        layout.addWidget(self.write_gjf_checkbox)
         layout.addSpacing(10)
 
         #Run button
@@ -728,6 +744,10 @@ class Generate_ORCAInputTab(QWidget):
         #Update calc line in GUI interface
         self.calc_line_input.setText(updated_text)
 
+    def toggle_cm_inputs(self, state):
+        self.charge_input.setEnabled(state == 0)
+        self.multiplicity_input.setEnabled(state == 0)
+
     def browse_directory(self):
         directory_path = QFileDialog.getExistingDirectory(self, 'Select Directory')
 
@@ -756,6 +776,9 @@ class Generate_ORCAInputTab(QWidget):
             rmax = 3.0
 
         #checkbox logic
+        if self.cm_checkbox.isChecked(): self.cm_checked = True
+        else: self.cm_checked = False
+
         if self.calc_hess_checkbox.isChecked(): self.calc_hess_checked = True
         else: self.calc_hess_checked = False
 
@@ -764,6 +787,9 @@ class Generate_ORCAInputTab(QWidget):
 
         if self.write_xyz_checkbox.isChecked(): self.write_xyz_checked = True
         else: self.write_xyz_checked = False
+
+        if self.write_gjf_checkbox.isChecked(): self.write_gjf_checked = True
+        else: self.write_gjf_checked = False
 
         #Input validation
         if not directory:
@@ -802,7 +828,7 @@ class Generate_ORCAInputTab(QWidget):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} WARNING: Your method seems rather short. Your input files will be created, but please double-check that have have requested an appropriate method using proper syntax, and that you did not forget any keywords.')
 
         #Call the Gaussian_gjf_to_ORCA_input function - extensive error handling is provided in the xyz_file_spliiter function itself
-        Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, self.calc_hess_checked, self.polarization_checked, self.write_xyz_checked)
+        Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, self.cm_checked, calc_line, esp_charges_checked, grid, rmax, self.calc_hess_checked, self.polarization_checked, self.write_xyz_checked, self.write_gjf_checked)
 
 class ORCAOut_ORCAInputTab(QWidget):
     def __init__(self, text_redirector, parent=None):
@@ -833,26 +859,28 @@ class ORCAOut_ORCAInputTab(QWidget):
         self.mpp_input = QSpinBox()
         self.mpp_input.setMaximum(20000)
         self.mpp_input.setValue(3200)
-        self.mpp_input.setMinimumWidth(60)
+        self.mpp_input.setMinimumWidth(90)
 
         ncores_label = QLabel('#cores:')
         self.ncores_input = QSpinBox()
         self.ncores_input.setMaximum(32)
         self.ncores_input.setValue(8)
-        self.ncores_input.setMinimumWidth(60)
+        self.ncores_input.setMinimumWidth(75)
 
         charge_label = QLabel('Charge:')
         self.charge_input = QSpinBox()
         self.charge_input.setMinimum(-100)
         self.charge_input.setMaximum(100)
         self.charge_input.setValue(1)
-        self.charge_input.setMinimumWidth(60)
+        self.charge_input.setMinimumWidth(75)
+        self.charge_input.setEnabled(False) #set to greyed out on startup as default shoudl be be reading charge from prev files
 
         multiplicity_label = QLabel('Multiplicity:')
         self.multiplicity_input = QSpinBox()
         self.multiplicity_input.setValue(1)
         self.multiplicity_input.setMaximum(100)
-        self.multiplicity_input.setMinimumWidth(60)
+        self.multiplicity_input.setMinimumWidth(75)
+        self.multiplicity_input.setEnabled(False) #set to greyed out on startup as default shoudl be be reading charge from prev files
 
         performance_layout.addWidget(mpp_label)
         performance_layout.addWidget(self.mpp_input)
@@ -871,19 +899,29 @@ class ORCAOut_ORCAInputTab(QWidget):
         performance_layout.addStretch(1)
         
         layout.addLayout(performance_layout)
-        layout.addSpacing(5)
 
-        #Calculation Method         
-        calc_type_label = QLabel('Method:')
-        layout.addWidget(calc_type_label)
+        #Option to use charge and multiplicity from file being read
+        checkbox_layout = QHBoxLayout()
+        self.placeholder = QLabel('')
+        self.cm_checkbox = QCheckBox('Read charge/multiplicity from file?')
+        self.cm_checkbox.setChecked(True) 
+        self.cm_checkbox.stateChanged.connect(self.toggle_cm_inputs)
+        
+        checkbox_layout.addWidget(self.placeholder)
+        checkbox_layout.addSpacing(72)  #Align with Charge label
+        checkbox_layout.addWidget(self.cm_checkbox, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        #Selection box for DFT/CCSDT/Custom methods
+        layout.addLayout(checkbox_layout)
+       
+        #Calc method: Selection box for DFT/CCSDT/Custom methods
         calc_layout = QHBoxLayout()
+        calc_type_label = QLabel('Method:')
         self.calc_type_combobox = QComboBox()
         self.calc_type_combobox.addItems(['DFT', 'CCSDT', 'Custom'])
         self.calc_type_combobox.setCurrentIndex(0)
         self.calc_type_combobox.currentIndexChanged.connect(self.update_calc_line)
-
+        
+        calc_layout.addWidget(calc_type_label)
         calc_layout.addWidget(self.calc_type_combobox)
         calc_layout.addSpacing(10)
 
@@ -903,11 +941,13 @@ class ORCAOut_ORCAInputTab(QWidget):
         self.grid_label = QLabel('Grid:')
         self.grid_input = QDoubleSpinBox()
         self.grid_input.setValue(0.1)
+        self.grid_input.setMinimumWidth(90)
         self.grid_input.setEnabled(False)
 
         self.rmax_label = QLabel('Rmax:')
         self.rmax_input = QDoubleSpinBox()
         self.rmax_input.setValue(3.0)
+        self.rmax_input.setMinimumWidth(90)
         self.rmax_input.setEnabled(False)
 
         grid_layout.addWidget(self.esp_charges_checkbox)
@@ -942,6 +982,10 @@ class ORCAOut_ORCAInputTab(QWidget):
 
         layout.setContentsMargins(30, 30, 30, 30)
         self.setLayout(layout)
+    
+    def toggle_cm_inputs(self, state):
+        self.charge_input.setEnabled(state == 0)
+        self.multiplicity_input.setEnabled(state == 0)
 
     def update_calc_line(self, index):
         #Options for calculation line
@@ -1002,6 +1046,9 @@ class ORCAOut_ORCAInputTab(QWidget):
             rmax = 3.0
 
         #checkbox logic
+        if self.cm_checkbox.isChecked(): self.cm_checked = True
+        else: self.cm_checked = False
+
         if self.calc_hess_checkbox.isChecked(): self.calc_hess_checked = True
         else: self.calc_hess_checked = False
 
@@ -1051,7 +1098,7 @@ class ORCAOut_ORCAInputTab(QWidget):
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} WARNING: Your method seems rather short. Your input files will be created, but please double-check that have have requested an appropriate method using proper syntax, and that you did not forget any keywords.')
 
         #Call the Gaussian_gjf_to_ORCA_input function if prelim checks pass - code contains extensive error handling
-        ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, self.calc_hess_checked, self.polarization_checked, self.write_xyz_checked, self.write_gjf_checked)
+        ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, self.cm_checked, calc_line, esp_charges_checked, grid, rmax, self.calc_hess_checked, self.polarization_checked, self.write_xyz_checked, self.write_gjf_checked)
 
 class ORCAOut_ORCA_TDDFT_Tab(QWidget):
     def __init__(self, text_redirector, parent=None):
@@ -1082,26 +1129,28 @@ class ORCAOut_ORCA_TDDFT_Tab(QWidget):
         self.mpp_input = QSpinBox()
         self.mpp_input.setMaximum(50000)
         self.mpp_input.setValue(5000)
-        self.mpp_input.setMinimumWidth(60)
+        self.mpp_input.setMinimumWidth(90)
 
         ncores_label = QLabel('#cores:')
         self.ncores_input = QSpinBox()
         self.ncores_input.setMaximum(32)
         self.ncores_input.setValue(8)
-        self.ncores_input.setMinimumWidth(60)
+        self.ncores_input.setMinimumWidth(75)
 
         charge_label = QLabel('Charge:')
         self.charge_input = QSpinBox()
         self.charge_input.setMinimum(-100)
         self.charge_input.setMaximum(100)
         self.charge_input.setValue(1)
-        self.charge_input.setMinimumWidth(60)
+        self.charge_input.setEnabled(False)
+        self.charge_input.setMinimumWidth(75)
 
         multiplicity_label = QLabel('Multiplicity:')
         self.multiplicity_input = QSpinBox()
         self.multiplicity_input.setValue(1)
         self.multiplicity_input.setMaximum(100)
-        self.multiplicity_input.setMinimumWidth(60)
+        self.multiplicity_input.setEnabled(False)
+        self.multiplicity_input.setMinimumWidth(75)
 
         performance_layout.addWidget(mpp_label)
         performance_layout.addWidget(self.mpp_input)
@@ -1120,7 +1169,19 @@ class ORCAOut_ORCA_TDDFT_Tab(QWidget):
         performance_layout.addStretch(1)
         
         layout.addLayout(performance_layout)
-        layout.addSpacing(5)
+
+        #Option to use charge and multiplicity from file being read
+        checkbox_layout = QHBoxLayout()
+        self.placeholder = QLabel('')
+        self.cm_checkbox = QCheckBox('Read charge/multiplicity from file?')
+        self.cm_checkbox.setChecked(True) 
+        self.cm_checkbox.stateChanged.connect(self.toggle_cm_inputs)
+        
+        checkbox_layout.addWidget(self.placeholder)
+        checkbox_layout.addSpacing(72)  #Align with Charge label
+        checkbox_layout.addWidget(self.cm_checkbox, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        layout.addLayout(checkbox_layout)
 
         #calc line
         calc_layout = QHBoxLayout()
@@ -1139,7 +1200,7 @@ class ORCAOut_ORCA_TDDFT_Tab(QWidget):
         self.nstates_input = QSpinBox()
         self.nstates_input.setValue(10)
         self.nstates_input.setMinimum(1)
-        self.nstates_input.setMinimumWidth(50)
+        self.nstates_input.setMinimumWidth(75)
 
         states_layout.addWidget(n_states_label)
         states_layout.addWidget(self.nstates_input)
@@ -1174,6 +1235,10 @@ class ORCAOut_ORCA_TDDFT_Tab(QWidget):
         if directory_path:
             self.directory_input.setText(directory_path)
 
+    def toggle_cm_inputs(self, state):
+        self.charge_input.setEnabled(state == 0)
+        self.multiplicity_input.setEnabled(state == 0)
+
     def run_ORCA_out_to_ORCA_TDDFT_VG(self):
 
         #Gather input values from the GUI
@@ -1186,7 +1251,11 @@ class ORCAOut_ORCA_TDDFT_Tab(QWidget):
         calc_line = calc_line.strip()
         states = self.nstates_input.value()
 
-        #checkbox logic for .gjf writing
+        #checkbox logic 
+
+        if self.cm_checkbox.isChecked(): self.cm_checked = True
+        else: self.cm_checked = False
+
         if self.write_gjf_checkbox.isChecked(): self.write_gjf_checked = True
         else: self.write_gjf_checked = False
 
@@ -1217,7 +1286,7 @@ class ORCAOut_ORCA_TDDFT_Tab(QWidget):
             pass
 
         #Call the ORCA .out to ORCA .inp for Vertical Gradient (VG) TD-DFT calcs if all cehcks pass - ORCA_out_to_ORCA_TDDFT_VG contains extensive error handling
-        ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, calc_line, states, self.write_gjf_checked)
+        ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, self.cm_checked, calc_line, states, self.write_gjf_checked)
 
 class ORCA_Optim_plot_Tab(QWidget):
     def __init__(self, text_redirector, parent=None):

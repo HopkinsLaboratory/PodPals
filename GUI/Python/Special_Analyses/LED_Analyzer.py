@@ -6,7 +6,7 @@ from datetime import datetime
 
 def LED_Analysis(parent, fragment1, fragment2):
 
-    output_csv = os.path.join(os.path.dirname(parent), 'LED_Analysis.csv')
+    output_csv = os.path.join(os.path.dirname(parent), f'{os.path.basename(parent).rsplit(".")[0]}_LED_Analysis.csv')
 
     #Constants
     J2Eh = 1 / (4.3597447222071e-18)  #Joule to Hartree conversion
@@ -68,7 +68,7 @@ def LED_Analysis(parent, fragment1, fragment2):
         
     def print_summary(E_int, dE_elprep_ref, E_elstat, E_exch, E_disp, dE_nondisp_CCSD, dE_C_T, output_csv):
         summary = [
-            ('E_int', E_int),
+            ('E_int', E_int / J2Eh * N_Av * 1e-3),
             ('E_int (check)', (dE_elprep_ref + E_elstat + E_exch + E_disp + dE_nondisp_CCSD + dE_C_T) / J2Eh * N_Av * 1e-3),
             ('E_elprep(HF)', dE_elprep_ref / J2Eh * N_Av * 1e-3),
             ('E_elstat(HF)', E_elstat / J2Eh * N_Av * 1e-3),
@@ -91,20 +91,21 @@ def LED_Analysis(parent, fragment1, fragment2):
         x1 = np.arange(1,8)
         plt.figure()
         off = np.max(Es) * 0.05
-        plt.title(f'LED Analysis')
+        plt.title(f'LED of {os.path.basename(parent).rsplit(".")[0]}', fontsize=16)
 
         plt.bar(x1, Es, color='C0')
         for i, E in enumerate(Es):
-            plt.text(x1[i], E + off * np.sign(E), '%+.1f' % E, ha='center', va='center')
+            plt.text(x1[i], E + off * np.sign(E), '%+.1f' % E, ha='center', va='center', fontsize=10)
 
         XXTicks = [np.arange(1,8), [r'$E_{elprep}$', r'$E_{elstat}$', r'$E_{exch}$', r'$E_{disp}$', r'$E_{nondisp}$', r'$E_{trip}$', r'$E_{tot}$']]
 
         plt.hlines(0.0, 0, 8, colors='k', alpha=0.5, lw=0.5)
         plt.xlim(0, 8)
-        plt.ylabel(r'interaction energy in kJ/mol')
-        plt.xticks(*XXTicks)
+        plt.ylabel('E / kJ mol**-1', fontsize=12)
+        plt.xticks(*XXTicks, fontsize=12)
+        plt.yticks(fontsize=12)
         plt.tight_layout()
-        plt.savefig(output, format='png', dpi=300, bbox_inches='tight')
+        plt.savefig(output, format='png', dpi=600, bbox_inches='tight')
 
     def run_LED_analysis(F1_file, F2_file, LED_file, output_csv):
 

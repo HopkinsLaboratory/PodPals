@@ -4,7 +4,7 @@ import numpy as np
 from datetime import datetime
 from PyQt6.QtWidgets import QApplication
 
-def Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, calc_hess_checked, polarization_checked, write_xyz_checked):
+def Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, cm_fromPrev, calc_line, esp_charges_checked, grid, rmax, calc_hess_checked, polarization_checked, write_xyz_checked, write_gjf_checked):
 
     #Generate a list of files from the directory - currently accepts Gaussian .gjf, .xyz, and ORCA .inp. 
     filenames = [x for x in os.listdir(directory) if x.lower().endswith('.gjf') or x.lower().endswith('.inp') or x.lower().endswith('.xyz')]
@@ -29,6 +29,11 @@ def Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, e
         QApplication.processEvents()
 
     os.makedirs(new_dir, exist_ok=True)  #Create the directory if it doesn't exist
+
+    #write directory for gjf files (if it doesn't already exist)
+    if write_gjf_checked:
+        gjf_dir = os.path.join(new_dir, 'gjfs')
+        os.makedirs(gjf_dir, exist_ok=True) 
 
     start = time.time()
 
@@ -58,7 +63,7 @@ def Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, e
         rmax = 3.0
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The ESP calculation block will be written to the .inp file with a grid size of {grid} angrstroms and a rmax of {rmax} angstroms.')
         QApplication.processEvents()
-    
+
     #check that the memory allocated per core is an integer
     if not isinstance(mpp, int):
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The number of memory is not an integer. You cannot have fractional CPUs! Fixing it now')
@@ -73,9 +78,20 @@ def Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, e
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The number of cores being written to each .inp is {ncores}.')
         QApplication.processEvents()
 
+    #check is user requests that charge/mult be read from a directory that contains xyz files, then inform that xyz does not contain charge/mult data
+    if any(file.lower().endswith('.xyz') for file in filenames) and cm_fromPrev:
+        print(
+            f'{datetime.now().strftime("[ %H:%M:%S ]")} xyz files were found in the directory, '
+            'which do not contain charge/mult data. As such, charge/mult will be read in from '
+            'the entries in the GUI window. If alternative numbers are desired, please uncheck '
+            '"Read charge/mult from file" and enter the desired charge/mult values.'
+        )
+        QApplication.processEvents()
+        cm_fromPrev = False
+
     #Create ORCA files
     for filename in filenames:
-    
+        
         #read and extract geometry from the .gjf files
         try:
             with open(os.path.join(directory, filename), 'r') as opf:
@@ -87,6 +103,36 @@ def Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, e
             QApplication.processEvents()
             continue
     
+        #Use charge/mult definition from ORCA out file if requested
+        if cm_fromPrev:        
+            
+            #extract from .gjf files (Gaussian)
+            if filename.lower().endswith('.gjf'):
+
+                #regex to match a line containing exactly two integers separated by spaces
+                gjf_cm_pattern = re.compile(r"^\s*(-?\d+)\s+(-?\d+)\s*$")
+                
+                for line in lines:
+                    gjf_cm_match = gjf_cm_pattern.match(line.strip())
+                    if gjf_cm_match:
+                        #overwrite charge/mult variables if found in file
+                        charge = int(gjf_cm_match.group(1)) 
+                        multiplicity = int(gjf_cm_match.group(2))
+                        break        
+
+            #extract from .inp files (ORCA)
+            if filename.lower().endswith('.inp'):
+                #regex to match lines starting with '*' and containing two integers
+                orcainp_cm_pattern = re.compile(r"^\*\S*\s+(-?\d+)\s+(-?\d+)", line.strip())
+
+                for line in lines:
+                    orcainp_cm_match = orcainp_cm_pattern.match(line.strip())
+                    if orcainp_cm_match:
+                        #overwrite charge/mult variables if found in file
+                        charge = int(orcainp_cm_match.group(1))
+                        multiplicity = int(orcainp_cm_match.group(2))
+                        break 
+
         geometry = []  #Initialize the geom list
 
         for line in lines:
@@ -143,7 +189,20 @@ def Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, e
                 if calc_hess_checked:
                     opf.write(f'%geom\n')
                     opf.write('Calc_Hess true\n')
-                    opf.write('end\n\n')           
+                    opf.write('end\n\n')    
+
+                #GOAT block - new to ORCA 6. hard-written values for now but will be made customizable in the future
+                if 'goat' in calc_line.lower():
+                    opf.write(f'%goat\n')
+                    opf.write('ALIGN true\n')
+                    #opf.write('GFNUPHILL GFNFF\n')
+                    opf.write('TEMPLIST 3000, 2000, 750, 500\n')
+                    opf.write('FREEZECISTRANS TRUE\n')
+                    opf.write('MAXEN 5.0\n') 
+                    if 'entropy' in calc_line.lower():
+                        opf.write('CONFTEMP 298.15\n') 
+                        opf.write('CONFDEGEN AUTO\n')                                      
+                    opf.write('end\n\n')                             
                 
                 #Calculate dipole and quadrupole moments (if requested)
                 if polarization_checked:
@@ -166,6 +225,15 @@ def Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, e
                 else:
                     opf.write(f'*xyz {charge} {multiplicity}\n{fs}\n*\n\n')
 
+                #user can request .gjf files be written - useful for generating .gjf inputs for visualization in Gaussview
+                if write_gjf_checked: 
+                    with open(os.path.join(gjf_dir, f'{filename[:-4]}.gjf'), 'w') as opf_gjf:
+                        opf_gjf.write('#opt pm7\n\n')
+                        opf_gjf.write(f'{filename[:-4]}\n\n') #filename excluding its extenstion 
+                        opf_gjf.write(f'{charge} {multiplicity}\n')
+                        opf_gjf.write(fs)
+                        opf_gjf.write('\n\n')
+
     print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {num_files} .gjf files were converted to ORCA .inp files in {np.round(time.time() - start,2)} seconds.')
     return
 
@@ -184,5 +252,6 @@ if __name__ == '__main__':
     calc_hess_checked = True
     polarization_checked = True
     write_xyz_checked = False
+    write_gjf_checked = False
 
-    Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, calc_hess_checked, polarization_checked, write_xyz_checked)
+    Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, calc_hess_checked, polarization_checked, write_xyz_checked, write_gjf_checked)

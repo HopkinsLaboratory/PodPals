@@ -18,9 +18,14 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
     def read_molecule_data(file, vib_scl):
         '''Reads data from the specified file in the given directory.'''
         
-        with open(file, 'r') as opf:
-            data = opf.readlines()
+        try:
+            with open(file, 'r') as opf:
+                data = opf.readlines()
 
+        except Exception as e:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An error was encountered when reading {os.path.basename(file)}: {e}.\nMost likely cause is that files were being saved to a cloud service like OneDrive and were not fully uploaded. Please wait a few moments and then re-run the code.')
+            pass
+                        
         #Initialize variables and arrays
         charge, multi, Eelec, RotABC, sigma_OR, mass, m_SI = None, None, None, None, None, None, None
         total_dipole, dipole_x, dipole_y, dipole_z, polariz, dipole_ax = None, None, None, None, None, None
@@ -29,11 +34,12 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         imag_freqs = None
         spin_contam = None
 
-        #flag to check for normal termination
-        normal_term = False
+        #flag to check for normal terminations and whether thermochem is requested
+        normal_term = False #check for normal term
+        thermochem_flag = False  #check if thermochem was requested
+        error_but_normal_term = False  # an additional flag because ORCA can print that a file finished normally even though it didn't, like in an OptFreq job where the opt doesn't converge
 
-        #Initialize flag to check if thermochem was requested in the method line
-        thermochem_flag = False  
+
 
         #First, we find the section of the out file that contains the data imported from the .inp - this will contain the freq flag that determined whether thermochem is calcualted
         for line in data:
@@ -113,9 +119,16 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                 #max dipole along each of the rotational axes
                 dipole_ax = ['A', 'B', 'C'][np.argmax(np.abs(mu_abc))]
             
+            elif "ERROR !!!" in line or "The optimization did not converge" in line:
+                error_but_normal_term = True
+            
             elif "****ORCA TERMINATED NORMALLY****" in line:
                 normal_term = True
         
+        #Handle the case where the normal termination line is present, but that the calcualtion didn't finish 
+        if error_but_normal_term and normal_term:
+            normal_term = False
+            
         #only look for vibrations if 'freq' was specificed in the method line
         if thermochem_flag:
             
@@ -164,6 +177,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                             except ValueError:
                                 print(f'Error: Unable to convert {vib_str} to a float from {os.path.basename(file)}.')
                                 continue
+                
 
         #After all data is extracted from the .out file and thermochem was requested (and was completed!), calculate he ZPE from the now non-None vibs array
         if vibs_array is not None:
@@ -236,38 +250,48 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         #Translational contributions
         S_trans = c['kB_Eh'] * (np.log(q_trans) + 1. + (3. / 2.)) #translational contribution to entropy
         E_trans = (3. / 2.) * c['kB_Eh'] * T #translational contribution to energy
+
+        C_trans = (3. / 2.) * c['kB_Eh'] #translational contribution to heat capacity
         
         #Rotational contributions; 3 cases for rotation: single atom, linear, or non-linear polyatomic
         if rot_type == 'atom':
-            #atoms have no rotational constants, so contributions from rotation to entropy and energy are both zero
+            #atoms have no rotational constants, so contributions from rotation to entropy, energy, and heat capacity are both zero
             S_rot = 0
             E_rot = 0
+            C_rot = 0
         
         elif rot_type == 'linear':
             S_rot = c['kB_Eh'] * (np.log(q_rot) + 1.) #rotational contribution to entropy for linear molecule
             E_rot = c['kB_Eh'] * T #rotational contribution to energy for linear molecule
+            C_rot = c['kB_Eh'] # #rotational contribution to heat capacity for a linear polyatomic
 
         else:
             S_rot = c['kB_Eh'] * (np.log(q_rot) + (3. / 2.)) #rotational contribution to entropy for a non-linear polyatomic
             E_rot = 3. / 2. * c['kB_Eh'] * T #rotational contribution to energy for a non-linear polyatomic
+            C_rot = (3. / 2.) * c['kB_Eh'] #rotational contribution to heat capacity for a non-linear polyatomic
         
         #Vibrational contributions: atomic vs. non-atomic
         if rot_type != 'atom':
             
             theta_v = c['h_SI'] * c['c_SI'] * vibs_array * 100. / c['kB']
             theta_v_oT = theta_v / T
+            exp_theta_v_oT = np.exp(theta_v_oT)
+            nexp_theta_v_oT = np.exp(-theta_v_oT)
             
-            S_vib = c['kB_Eh'] * np.sum((theta_v_oT / (np.exp(theta_v_oT) - 1.)) - np.log(1. - np.exp(-theta_v_oT))) #vibrational contribution to entropy - slightly different than the default method used by ORCA
-            E_vib = c['kB_Eh'] * np.sum(theta_v / (np.exp(theta_v_oT) - 1.)) #vibrational contribution to energy
+            S_vib = c['kB_Eh'] * np.sum((theta_v_oT / (exp_theta_v_oT - 1.)) - np.log(1. - nexp_theta_v_oT)) #vibrational contribution to entropy - slightly different than the default method used by ORCA
+            E_vib = c['kB_Eh'] * np.sum(theta_v / (exp_theta_v_oT - 1.))#vibrational contribution to energy
+            C_vib = c['kB_Eh'] * np.sum( (theta_v_oT**2) * exp_theta_v_oT / (exp_theta_v_oT - 1.)**2 ) #vib contrib to heat capacity
         
         else:
             S_vib = 0
             E_vib = 0
+            C_vib = 0
             ZPE = 0 #needed for calculation of total energy later
         
         #Electronic contributions
         S_elec = c['kB_Eh'] * np.log(q_elec) #electronic contribution to entropy
         E_elec = 0. #always zero for systems in their electronic ground state
+        C_elec = 0. #always zero because no temp dependent term in elec parititon fxn
 
         #Contributions to total energy
         Total_S = S_trans + S_rot + S_vib + S_elec
@@ -281,7 +305,9 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         Gcorr = ((Hcorr - ZPE) - T * Total_S) + ZPE
         Total_G = Gcorr + mol_Eelec
 
-        return Ecorr, Total_E, Hcorr, Total_H, Gcorr, Total_G, Total_S
+        C_tot = (C_trans + C_rot + C_vib + C_elec) / c['J2Eh'] * c['N_Av'] * 1.E-3 #total heat capacity in kJ/mol
+
+        return Ecorr, Total_E, Hcorr, Total_H, Gcorr, Total_G, Total_S, C_tot
 
     '''Main code operation'''
     #get list of filenames, and check if the directory does not contain any .out files. If using pseudopotentials, an _atom will be added to the filename - we don't want those files!
@@ -307,6 +333,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         'Total Entropy (T*S)',
         'Total Gibbs Energy',
         'Relative Gibbs Energy',
+        'Heat Capacity (kJ mol**-1)',
         'Rot. const. A (cm**-1)',
         'Rot. const. B (cm**-1)',
         'Rot. const. C (cm**-1)',
@@ -355,13 +382,11 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
             
             #calculate parition functions from input data if thermochem was requested
             if thermochem_flag:
-                
-                #try to calculate thermochemistry
                 try:
                     q_trans, q_rot, q_vib, q_elec, rot_type = calc_partition_function(filename, m_SI, RotABC, sigma_OR, vibs_array, multi, T, p)
 
                     #calculate thermochemical corrections
-                    Ecorr, Total_E, Hcorr, Total_H, Gcorr, Total_G, Total_S = calc_thermochemistry(vibs_array, q_trans, q_rot, q_vib, q_elec, ZPE, Eelec, T, p, rot_type)
+                    Ecorr, Total_E, Hcorr, Total_H, Gcorr, Total_G, Total_S, C_total = calc_thermochemistry(vibs_array, q_trans, q_rot, q_vib, q_elec, ZPE, Eelec, T, p, rot_type)
                     Gibbs_list.append(Total_G)
                 
                 #if thermochem corrections cannot be calculated (such as because of a incomplete job, write placeholders)
@@ -383,8 +408,16 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                 Erel = 123.0
 
                 #Prepare the values to be written
-                values = [filename, n_imag, Eelec, ZPE, Ecorr, Hcorr, Gcorr, Total_ZPE, Total_E, Total_H, Total_S * T, Total_G, Erel,  RotA, RotB, RotC, sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz, q_trans, q_rot, q_vib, q_elec, spin_contam]
+                try:
+                    values = [filename, n_imag, Eelec, ZPE, Ecorr, Hcorr, Gcorr, Total_ZPE, Total_E, Total_H, Total_S * T, Total_G, Erel, C_total, RotA, RotB, RotC, sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz, q_trans, q_rot, q_vib, q_elec, spin_contam]
 
+                #so if an ORCA job is an Opt Freq, but the Opt doesn't finish, there is still a normal termination flag. sigh. Let's handle that. 
+
+                except UnboundLocalError:
+                    abnormal_term_list.append(filename)
+                    values = [filename, 'N/A', Eelec, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', RotA, RotB, RotC, sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam]
+            
+                     
             #if thermochem was not requested (like in a single point energy calculation or geometry optimization): 
             else:
 
@@ -392,11 +425,11 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                 
                 #if an electronic energy is found
                 if Eelec:
-                    values = [filename, 'N/A', Eelec, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', RotA, RotB, RotC, 'N/A', dipole_x, dipole_y, dipole_z, total_dipole, polariz, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam]
+                    values = [filename, 'N/A', Eelec, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', RotA, RotB, RotC, 'N/A', dipole_x, dipole_y, dipole_z, total_dipole, polariz, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam]
 
                 #I don't know how a job could terminate normally but also enter this block, but YOLO. 
                 else:
-                    values = [filename, 'N/A', 12345.0, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', RotA, RotB, RotC, 'N/A', dipole_x, dipole_y, dipole_z, total_dipole, polariz, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam]
+                    values = [filename, 'N/A', 12345.0, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', RotA, RotB, RotC, 'N/A', dipole_x, dipole_y, dipole_z, total_dipole, polariz, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam]
                     print(f'Congratulations. {filename} entered a block of code that I did not think was possible. Please report this to the issues section of the Github repo.')
         
         #if the ORCA job did not finish
@@ -413,11 +446,11 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
 
             #if the job is a single point energy calculation did not finish
             if not thermochem_flag and not Eelec:
-                values = [filename, 'N/A', 12345.0, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', RotA, RotB, RotC, sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam]
+                values = [filename, 'N/A', 12345.0, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', RotA, RotB, RotC, sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam]
             
             #if the job is an optimization that didn't finish
             else:
-                values = [filename, 'N/A', Eelec, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', RotA, RotB, RotC, sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam]
+                values = [filename, 'N/A', Eelec, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', RotA, RotB, RotC, sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam]
         
         values = [val if val is not None else 'N/A' for val in values]
 
@@ -429,7 +462,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
 
         #debugging for when problems arise
         '''
-        variable_names = ['filename', 'n_imag', 'Eelec', 'ZPE', 'Ecorr', 'Hcorr', 'Gcorr', 'Total_ZPE', 'Total_E', 'Total_H', 'Total_S*T', 'Total_G', 'Erel', 'RotA/100', 'RotB/100', 'RotC/100', 'sigma_OR', 'dipole_x', 'dipole_y', 'dipole_z', 'total_dipole', 'polariz_value', 'q_trans', 'q_rot', 'q_vib', 'q_elec', 'spin_contam_value']
+        variable_names = ['filename', 'n_imag', 'Eelec', 'ZPE', 'Ecorr', 'Hcorr', 'Gcorr', 'Total_ZPE', 'Total_E', 'Total_H', 'Total_S*T', 'Total_G', 'Erel', 'Heat capacity', 'RotA/100', 'RotB/100', 'RotC/100', 'sigma_OR', 'dipole_x', 'dipole_y', 'dipole_z', 'total_dipole', 'polariz_value', 'q_trans', 'q_rot', 'q_vib', 'q_elec', 'spin_contam_value']
         variable_values = [v if v is not None else 'I am none' for v in values]
         with pd.ExcelWriter(os.path.join(directory, 'debugging.xlsx'), engine='openpyxl') as writer:
             
@@ -514,8 +547,8 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
 #external testing
 if __name__ == '__main__':
 
-    directory = r'C:\Users\Chris\OneDrive - University of Waterloo\Waterloo\Manuscripts\2024\Heterobimetallic_Coordination_Derek\Calcs_ORCA6\Fragments\DFT_OptFreq'
-    sort_by = 'Z'
+    directory = r'C:\Users\Chris\OneDrive - University of Waterloo\Waterloo\Manuscripts\2024\Negative_PIC\New_Inputs'
+    sort_by = 'F'
     T = 298.15
     p = 100000.
     vib_scl = 1.00

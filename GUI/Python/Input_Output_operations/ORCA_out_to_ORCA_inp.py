@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime
 from PyQt6.QtWidgets import QApplication
 
-def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, calc_hess_checked, polarization_checked, write_xyz_checked, write_gjf_checked):
+def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, cm_fromPrev, calc_line, esp_charges_checked, grid, rmax, calc_hess_checked, polarization_checked, write_xyz_checked, write_gjf_checked):
 
     #Generate a list of .gjf files from the directory. Note that pseudopotentials write _atom##to the filename, so we filter these out. 
     filenames = [x for x in os.listdir(directory) if x.lower().endswith('.out') and '_atom' not in x]
@@ -27,9 +27,9 @@ def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line
 
     os.makedirs(new_dir, exist_ok=True)  
 
+    #write directory for gjf files (if it doesn't already exist)
     if write_gjf_checked:
         gjf_dir = os.path.join(new_dir, 'gjfs')
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} .gjf files will be written to {os.path.join(os.path.basename(new_dir), "gjfs")}')
         os.makedirs(gjf_dir, exist_ok=True) 
 
     start = time.time()
@@ -42,7 +42,7 @@ def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line
     #check is calc line begns wth a !
     if not calc_line.startswith('!'):
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The input line in {filename} does not start with a !')
-        calc_line = '! ' + calc_line
+        calc_line = f'! {calc_line}'
         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Fixing it now; the new calc line is:\n {calc_line}')
         QApplication.processEvents()
 
@@ -89,6 +89,20 @@ def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An error was encountered when trying to open {filename}: {e}.\n Processing of this file will be skipped.')
             QApplication.processEvents()
             continue
+        
+        #Use charge/mult definition from ORCA out file if requested
+        if cm_fromPrev:        
+            
+            # define and find charge/mult pattern
+            charge_pattern = r'Total Charge\s+Charge\s+\.*\s+(\d+)'
+            charge_match = re.search(charge_pattern, data)
+            
+            multiplicity_pattern = r'Multiplicity\s+Mult\s+\.*\s+(\d+)'
+            multiplicity_match = re.search(multiplicity_pattern, data)
+
+            # set charge/mult to value from output. reverts to default if nothing is set
+            charge = int(charge_match[1]) if charge_match else charge
+            multiplicity = int(multiplicity_match[1]) if multiplicity_match else multiplicity
 
         #Get the geometry and write to a list called geometry
         geometry = [] #Initialize the geometry list
@@ -187,18 +201,19 @@ def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line
 #external testing
 if __name__ == '__main__':
 
-    directory = r'D:\OneDrive\OneDrive - University of Waterloo\Waterloo\GitHub\ORCA_Analysis_GUI\Sample_Files\T4_ORCA_out_to_ORCA_inp'
-    mpp = 3500
+    directory = r'C:\Users\Chris\OneDrive - University of Waterloo\Waterloo\Manuscripts\2024\Heterobimetallic_Coordination_Derek\Calcs_ORCA6\NBO\Mystery_CuTFA'
+    mpp = 3000
     ncores = 8
     charge = 1
     multiplicity = 1
-    calc_line = '! wB97X-D3 TightOpt Freq def2-TZVPP def2/J RIJCOSX TightSCF defgrid3'
+    cm_fromPrev = True
+    calc_line = '! b3lyp D3BJ def2-TZVPP def2/J RIJCOSX TightSCF defgrid3 CPCM(Acetonitrile)'
     esp_charges_checked = False
     grid = 0.1
     rmax = 3.0
-    calc_hess_checked = True
-    polarization_checked = True
+    calc_hess_checked = False
+    polarization_checked = False
     write_xyz_checked = False
     write_gjf_checked = True
 
-    ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, calc_line, esp_charges_checked, grid, rmax, calc_hess_checked, polarization_checked, write_xyz_checked, write_gjf_checked)
+    ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, cm_fromPrev, calc_line, esp_charges_checked, grid, rmax, calc_hess_checked, polarization_checked, write_xyz_checked, write_gjf_checked)

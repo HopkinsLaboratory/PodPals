@@ -5,7 +5,7 @@ from natsort import natsorted
 import shutil
 from PyQt6.QtWidgets import QApplication
 
-def ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, calc_line, states, write_gjf_checked):
+def ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, cm_fromPrev, calc_line, states, write_gjf_checked):
 
     #Generate a list of .gjf files from the directory. Note that pseudopotentials write _atom##to the filename, so we filter these out. Also sort in natural order for pairwise comparison 
     out_filenames = natsorted([x for x in os.listdir(directory) if x.lower().endswith('.out') and '_atom' not in x])
@@ -103,9 +103,23 @@ def ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, calc
 
         #If there is an error opening the .gjf file, infomr that user that it will be skipped.
         except IOError as e:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An error was encountered when trying to open {filename}: {e}.\n Processing of this file will be skipped.')
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An error was encountered when trying to open {out}: {e}.\n Processing of this file will be skipped.')
             data = None
             continue
+        
+        #Use charge/mult definition from ORCA out file if requested
+        if cm_fromPrev:        
+            
+            # define and find charge/mult pattern
+            charge_pattern = r'Total Charge\s+Charge\s+\.*\s+(\d+)'
+            charge_match = re.search(charge_pattern, data)
+            
+            multiplicity_pattern = r'Multiplicity\s+Mult\s+\.*\s+(\d+)'
+            multiplicity_match = re.search(multiplicity_pattern, data)
+
+            # set charge/mult to value from output. reverts to default if nothing is found
+            charge = int(charge_match[1]) if charge_match else charge
+            multiplicity = int(multiplicity_match[1]) if multiplicity_match else multiplicity
 
         #Get the geometry and write to a list called geometry
         geometry = [] #Initialize the geometry list
@@ -119,7 +133,7 @@ def ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, calc
                 geometry.append(split_line)
 
         if not geometry:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No atomic coordinate data was found in {filename}. Processing of this file will be skipped.')
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} No atomic coordinate data was found in {out}. Processing of this file will be skipped.')
             QApplication.processEvents()
             continue
         
@@ -201,9 +215,10 @@ if __name__ == '__main__':
     ncores = 8
     charge = 1
     multiplicity = 1
+    cm_fromPrev = False
     calc_line = r'! wB97X-D3 Def2-TZVPP ESD(ABS)' #dummy test line 
     states = 15
     write_gjf_checked = True
 
     #run the code
-    ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, calc_line, states, write_gjf_checked)
+    ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, cm_fromPrev, calc_line, states, write_gjf_checked)
