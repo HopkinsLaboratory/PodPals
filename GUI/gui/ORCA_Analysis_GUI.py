@@ -87,7 +87,7 @@ class ORCAAnalysisSuite(QMainWindow):
         #Sub-tabs for I/O operations, then add to main IO tab
 
         self.xyz_file_splitter_tab = XYZFileSplitterTab(self.output_text_edit)
-        IO_tab.addTab(self.xyz_file_splitter_tab, 'T1: CREST .xyz splitter')
+        IO_tab.addTab(self.xyz_file_splitter_tab, 'T1: .xyz splitter')
 
         sub_tab2 = CosineSimTab(self.output_text_edit)
         IO_tab.addTab(sub_tab2, 'T2: Cosine sim sorting')
