@@ -93,8 +93,8 @@ def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, cm_fromPr
         #Use charge/mult definition from ORCA out file if requested
         if cm_fromPrev:        
             
-            # define and find charge/mult pattern
-            charge_pattern = r'Total Charge\s+Charge\s+\.*\s+(\d+)'
+            # define and find charge (positive or negative) and mult pattern
+            charge_pattern = r'Total Charge\s+Charge\s+\.*\s+(-?\d+)'
             charge_match = re.search(charge_pattern, data)
             
             multiplicity_pattern = r'Multiplicity\s+Mult\s+\.*\s+(\d+)'
@@ -156,7 +156,7 @@ def ORCA_out_to_ORCA_inp(directory, mpp, ncores, charge, multiplicity, cm_fromPr
 
                 #Open shell calcs
                 if multiplicity != 1:
-                    opf.write(f'%scf HFTyp UHF\n')
+                    opf.write(f'%scf HFTyp UKS\n')
                     opf.write('end\n\n')
 
                 #Calc Hessian during first step of the optimization (if requested)

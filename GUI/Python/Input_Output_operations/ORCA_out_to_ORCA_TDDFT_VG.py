@@ -110,8 +110,8 @@ def ORCA_out_to_ORCA_TDDFT_VG(directory, mpp, ncores, charge, multiplicity, cm_f
         #Use charge/mult definition from ORCA out file if requested
         if cm_fromPrev:        
             
-            # define and find charge/mult pattern
-            charge_pattern = r'Total Charge\s+Charge\s+\.*\s+(\d+)'
+            # define and find charge (positive or negative) and mult pattern
+            charge_pattern = r'Total Charge\s+Charge\s+\.*\s+(-?\d+)'
             charge_match = re.search(charge_pattern, data)
             
             multiplicity_pattern = r'Multiplicity\s+Mult\s+\.*\s+(\d+)'

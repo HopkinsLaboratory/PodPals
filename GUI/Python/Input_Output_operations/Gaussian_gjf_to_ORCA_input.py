@@ -127,7 +127,7 @@ def Gaussian_gjf_to_ORCA_input(directory, mpp, ncores, charge, multiplicity, cal
 
                 #Open shell calcs
                 if multiplicity != 1:
-                    opf.write(f'%scf HFTyp UHF\n')
+                    opf.write(f'%scf HFTyp UKS\n')
                     opf.write('end\n\n')
 
                 #Calc Hessian during first step of the optimization (if requested)

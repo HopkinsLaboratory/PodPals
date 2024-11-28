@@ -122,8 +122,8 @@ def Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, cm_fromPrev,
 
             #extract from .inp files (ORCA)
             if filename.lower().endswith('.inp'):
-                #regex to match lines starting with '*' and containing two integers
-                orcainp_cm_pattern = re.compile(r"^\*\S*\s+(-?\d+)\s+(-?\d+)", line.strip())
+                #regex to match lines starting with '*' and containing two integers, where the first can be negative
+                orcainp_cm_pattern = re.compile(r"^\*\S*\s+(-?\d+)\s+(-?\d+)")
 
                 for line in lines:
                     orcainp_cm_match = orcainp_cm_pattern.match(line.strip())
@@ -182,7 +182,7 @@ def Generate_ORCA_inp(directory, mpp, ncores, charge, multiplicity, cm_fromPrev,
 
                 #Open shell calcs
                 if multiplicity != 1:
-                    opf.write(f'%scf HFTyp UHF\n')
+                    opf.write(f'%scf HFTyp UKS\n')
                     opf.write('end\n\n')
 
                 #Calc Hessian during first step of the optimization (if requested)
