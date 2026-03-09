@@ -25,7 +25,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         except Exception as e:
             print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An error was encountered when reading {os.path.basename(file)}: {e}.\nMost likely cause is that files were being saved to a cloud service like OneDrive and were not fully uploaded. Please wait a few moments and then re-run the code.')
             pass
-                        
+                    
         #Initialize variables and arrays
         charge, multi, Eelec, RotABC, sigma_OR, mass, m_SI = None, None, None, None, None, None, None
         total_dipole, dipole_x, dipole_y, dipole_z, polariz, dipole_ax = None, None, None, None, None, None
@@ -48,9 +48,10 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                 thermochem_flag = True
                 break
             
+            #Edit - turnning this off for now in case there is a compound job requested 
             #There is no point in searching lines after the termination of the input block, so we're defining a flag that will break this loop when set to true
-            elif '*END OF INPUT*' in line:
-                break
+            #elif '*END OF INPUT*' in line:
+            #    break
 
         #get info from files depending on if thermochem was calculated or not
 
@@ -617,4 +618,15 @@ if __name__ == '__main__':
     }
 
     #run the code
-    ORCA_Thermochem_Calculator(directory,T, p, vib_scl, sort_by)
+    #ORCA_Thermochem_Calculator(directory,T, p, vib_scl, sort_by)
+
+#external testing
+if __name__ == '__main__':
+
+    #Note: you must comment out the call to the constants dictionary 'c'
+    directory = r'E:\OneDrive - University of Waterloo\Waterloo\Manuscripts\2026\PFAS_Calculations_ANFry\Calcs\DFT_Opt\wb97x_d3_6311'
+    T = 298.15
+    p = 100000.
+    vib_scl = 1.
+    sort_by = 'F'
+    ORCA_Thermochem_Calculator(directory, T, p, vib_scl, sort_by = 'F')
