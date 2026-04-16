@@ -15,18 +15,19 @@ import numpy as np
 
 def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1., sort_by = 'F'):
 
+    #initialize lists for storing data
+    Gibbs_list = []
+    thermochem_not_requested = []
+    master_imag_freq_list = []
+
+    abnormal_term_list = [] #incomplete job 
+    abnormal_term_wVibs_list = [] #incomplete job with thermo data (e.g., compound job with failure at DLPNO-CCSDT SPE step)
+    normal_term_with_errors = [] #e.g., complete compound job but opt cycle reaches max number of steps w/o convergence and continues onto thermo step
+
     def read_molecule_data(file, vib_scl):
         '''Reads data from the specified file in the given directory.'''
-        
-        try:
-            with open(file, 'r') as opf:
-                data = opf.readlines()
 
-        except Exception as e:
-            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An error was encountered when reading {os.path.basename(file)}: {e}.\nMost likely cause is that files were being saved to a cloud service like OneDrive and were not fully uploaded. Please wait a few moments and then re-run the code.')
-            pass
-                    
-        #Initialize variables and arrays
+        #Initialize variables and arrays pertient to output file
         charge, multi, Eelec, RotABC, sigma_OR, mass, m_SI = None, None, None, None, None, None, None
         total_dipole, dipole_x, dipole_y, dipole_z, polariz, dipole_ax = None, None, None, None, None, None
         vibs_array, ZPE, Total_ZPE = None, None, None
@@ -38,8 +39,14 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         normal_term = False #check for normal term
         thermochem_flag = False  #check if thermochem was requested
         error_but_normal_term = False  # an additional flag because ORCA can print that a file finished normally even though it didn't, like in an OptFreq job where the opt doesn't converge
+        
+        try:
+            with open(file, 'r') as opf:
+                data = opf.readlines()
 
-
+        except Exception as e:
+            print(f'{datetime.now().strftime("[ %H:%M:%S ]")} An error was encountered when reading {os.path.basename(file)}: {e}.\nMost likely cause is that files were being saved to a cloud service like OneDrive and were not fully uploaded. Please wait a few moments and then re-run the code.')
+            return charge, multi, Eelec, RotABC, sigma_OR, mass, m_SI, total_dipole, dipole_x, dipole_y, dipole_z, polariz, dipole_ax, vibs_array, ZPE, Total_ZPE, n_imag, imag_freqs, normal_term, thermochem_flag, spin_contam
 
         #First, we find the section of the out file that contains the data imported from the .inp - this will contain the freq flag that determined whether thermochem is calcualted
         for line in data:
@@ -47,20 +54,19 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
             if re.search(r'\bfreq\b', line, re.IGNORECASE):
                 thermochem_flag = True
                 break
-            
-            #Edit - turnning this off for now in case there is a compound job requested 
+
+            #Edit - turnning this off for now in case there is a compound job requested
             #There is no point in searching lines after the termination of the input block, so we're defining a flag that will break this loop when set to true
             #elif '*END OF INPUT*' in line:
             #    break
 
         #get info from files depending on if thermochem was calculated or not
-
         for line in data:
-            
+
             #charge
             if line.startswith(' Total Charge'):
                 charge = float(line.split()[-1])
-            
+
             #multiplicity
             elif line.startswith(' Multiplicity'):
                 multi = float(line.split()[-1])
@@ -68,16 +74,17 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
             #spin contamination
             elif line.startswith('Deviation                       :'):
                 spin_contam = float(line.split()[-1])
-            
+
             #final electronic energy
             elif line.startswith('FINAL SINGLE POINT ENERGY'):
                 Eelec = float(line.split()[-1])
 
             #rotational constants
             elif line.startswith('Rotational constants in cm-1'):
-                RotA = float(line.split()[4]) * 100.  #in m**-1
-                RotB = float(line.split()[5]) * 100.
-                RotC = float(line.split()[6]) * 100.
+                parts = line.split()
+                RotA = float(parts[4]) * 100.  #in m**-1
+                RotB = float(parts[5]) * 100.
+                RotC = float(parts[6]) * 100.
                 RotABC = np.array([RotA, RotB, RotC])  #in m**-1
 
             #point group
@@ -95,15 +102,15 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
 
             #dipole along x, y, and z axes
             elif line.startswith('Total Dipole Moment    :'):
-                
+
                 #given in a.u, then converted to Debye
-                dipoles = line.split()[4:] #XYZ components are given after the 4th entry because the dipoles are prefixed by "Total Dipole Moment    :", which is split by whitespaces
+                dipoles = line.split()[4:]  #XYZ components are given after the 4th entry because the dipoles are prefixed by "Total Dipole Moment    :", which is split by whitespaces
 
                 #conversion factor - 1 Debye = 3.33564E-30 C*m, and 1 a.u of the electricdipole moment is 8.47835326E-30 Cm
                 au_to_Debye = 8.47835326E-30 / 3.33564E-30
 
                 try:
-                    dipole_x, dipole_y, dipole_z = [float(dipole) * au_to_Debye for dipole in dipoles]
+                    dipole_x, dipole_y, dipole_z = [float(dipole) * au_to_Debye for dipole in dipoles[:3]]
 
                 except (IndexError, TypeError, ValueError) as e:
                     print(f'{datetime.now().strftime("[ %H:%M:%S ]")} XYZ components of the dipole from {os.path.basename(file)} could not be read properly. Error: {e}')
@@ -116,61 +123,62 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
             #dipole moment along the rotational axes
             elif line.startswith('x,y,z [Debye]'):
                 mu_abc = np.array([float(s) for s in line.split()[-3:]])
-                
+
                 #max dipole along each of the rotational axes
                 dipole_ax = ['A', 'B', 'C'][np.argmax(np.abs(mu_abc))]
-            
-            elif "ERROR !!!" in line or "The optimization did not converge" in line:
+
+            elif (
+                re.search(r'\bWARNING\s*!+', line, re.IGNORECASE) or  # matches WARNING!!! and WARNING !!!
+                re.search(r'The\s+optimization\s+did\s+not\s+converge', line, re.IGNORECASE)
+            ):
                 error_but_normal_term = True
-            
-            elif "****ORCA TERMINATED NORMALLY****" in line:
+
+            elif 'orca terminated normally' in line.lower():
                 normal_term = True
-        
-        #Handle the case where the normal termination line is present, but that the calcualtion didn't finish 
-        if error_but_normal_term and normal_term:
-            normal_term = False
-            
+
         #only look for vibrations if 'freq' was specificed in the method line
         if thermochem_flag:
-            
+
             #Search for imaginary freqs in the last printing of vib frequencies (in case multiple calculations of Hessian is requested by the user during OptTS )
             #get the index of the line where the last vib freq block is printed
             last_vib_header_index = None
             last_vib_footer_index = None
+
             for i, line in enumerate(data):
-                
+
                 #find start of the LAST vib header section
                 if line.strip() == '-----------------------' and i + 1 < len(data) and data[i + 1].strip() == 'VIBRATIONAL FREQUENCIES':
                     last_vib_header_index = i + 4  #The line after the header and scaling factor line
 
                 if line.strip() == '------------' and i + 1 < len(data) and data[i + 1].strip() == 'NORMAL MODES':
                     last_vib_footer_index = i  #The lines before the 'NORMAL MODES' block
-            
+
             if last_vib_header_index is not None and last_vib_footer_index is not None:
                 vibs_array = []
-                for line in data[last_vib_header_index:last_vib_footer_index]:             
-                   
+
+                for line in data[last_vib_header_index:last_vib_footer_index]:
+
                     #get vib freqs
-                    if 'cm**-1' in line:                       
+                    if 'cm**-1' in line:
                         if '***imaginary mode***' not in line:
                             vib_str = line.split()[1]  # Extract the vib freq from strings of the format:    1:         0.00 cm**-1
                             try:
-                                vib = float(line.split()[1]) * vib_scl
+                                vib = float(vib_str) * vib_scl
                             except (TypeError, ValueError):
                                 print(f'Error: Unable to convert {vib_str} to a float from {os.path.basename(file)}.')
                                 continue
-                            
+
                             if vib > 0:  # Exclude zero and imaginary modes
                                 vibs_array.append(vib)  # in cm**-1
-      
+
                         #SEARCH FOR IMAGINARY MODES
                         if '***imaginary mode***' in line:
                             if imag_freqs is None:
                                 imag_freqs = []
-                            
+
                             vib_str = line.split()[1]  # Extract the vib freq from strings of the format:       6:      -502.32 cm**-1 ***imaginary mode***
                             try:
-                                vib = float(line.split()[1]) #no scaling applied to imag mobe
+                                vib = float(vib_str)  #no scaling applied to imag mobe
                                 if vib < 0:
                                     imag_freqs.append(vib)
                                     n_imag += 1
@@ -178,7 +186,6 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                             except ValueError:
                                 print(f'Error: Unable to convert {vib_str} to a float from {os.path.basename(file)}.')
                                 continue
-                
 
         #After all data is extracted from the .out file and thermochem was requested (and was completed!), calculate he ZPE from the now non-None vibs array
         if vibs_array is not None:
@@ -186,8 +193,8 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
             ZPE = 0.5 * c['h_SI'] * c['c_SI'] * 100. * np.sum(vibs_array) * c['J2Eh']  #Hartree
             Total_ZPE = Eelec + ZPE
 
-        return charge, multi, Eelec, RotABC, sigma_OR, mass, m_SI, total_dipole, dipole_x, dipole_y, dipole_z, polariz, dipole_ax, vibs_array, ZPE, Total_ZPE, n_imag, imag_freqs, normal_term, thermochem_flag, spin_contam
-        
+        return charge, multi, Eelec, RotABC, sigma_OR, mass, m_SI, total_dipole, dipole_x, dipole_y, dipole_z, polariz, dipole_ax, vibs_array, ZPE, Total_ZPE, n_imag, imag_freqs, normal_term, thermochem_flag, spin_contam, error_but_normal_term
+    
     def calc_partition_function(filename, m_SI, RotABC, sigma_OR, vibs_array, multi, T, p):
         '''Calculates the partition functions (trans, rot, vib, elec) for the molecule at a given p, T. Methodology follows that of “Molecular Thermodynamics” by McQuarrie and Simon (1999)'''
 
@@ -354,19 +361,11 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
     #initialize pd FataFrame w/ columns assoicated w/ thermo properties
     df = pd.DataFrame(columns=properties)
 
-    #initialize lists for storing data
-    Gibbs_list = []
-    thermochem_not_requested = []
-    master_imag_freq_list = []
-    
-    abnormal_term_list = []
-    abnormal_term_wVibs_list = []
-
     for filename in filenames:
-
+        
         #get data from input file
-        charge, multi, Eelec, RotABC, sigma_OR, mass, m_SI, total_dipole, dipole_x, dipole_y, dipole_z, polariz, dipole_ax, vibs_array, ZPE, Total_ZPE, n_imag, imag_freqs, normal_term, thermochem_flag, spin_contam = read_molecule_data(os.path.join(directory, filename), vib_scl)
-
+        charge, multi, Eelec, RotABC, sigma_OR, mass, m_SI, total_dipole, dipole_x, dipole_y, dipole_z, polariz, dipole_ax, vibs_array, ZPE, Total_ZPE, n_imag, imag_freqs, normal_term, thermochem_flag, spin_contam, error_but_normal_term = read_molecule_data(os.path.join(directory, filename), vib_scl)
+       
         #evaluate rotational contants if numbers were extracted. otherwise, return N/A
         try:
             RotA = RotABC[0]/100
@@ -381,6 +380,10 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
         #if the job terminated normally
         if normal_term:
             
+            #append filename w/ error to master list
+            if error_but_normal_term:
+                normal_term_with_errors.append(os.path.basename(filename))
+
             #calculate parition functions from input data if thermochem was requested
             if thermochem_flag:
                 try:
@@ -398,7 +401,7 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                 if n_imag > 0:
                 
                     try:
-                        master_imag_freq_list.append([filename, imag_freqs]) #append list of imag freqs to master imag_freqs alongside the associated filename
+                        master_imag_freq_list.append([os.path.basename(filename), imag_freqs]) #append list of imag freqs to master imag_freqs alongside the associated filename
                         
                     except Exception as e:
                         print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Error extracting imaginary frequency data from {filename}: {e}. Please report this issue along with your .out file to the issues section of the Github repo.')
@@ -415,14 +418,14 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
                 #so if an ORCA job is an Opt Freq, but the Opt doesn't finish, there is still a normal termination flag. sigh. Let's handle that. 
 
                 except UnboundLocalError:
-                    abnormal_term_list.append(filename)
+                    abnormal_term_list.append(os.path.basename(filename))
                     values = [filename, 'N/A', Eelec, 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', RotA, RotB, RotC, sigma_OR, dipole_x, dipole_y, dipole_z, total_dipole, polariz, 'N/A', 'N/A', 'N/A', 'N/A', spin_contam]
             
                      
             #if thermochem was not requested (like in a single point energy calculation or geometry optimization): 
             else:
 
-                thermochem_not_requested.append(filename)
+                thermochem_not_requested.append(os.path.basename(filename))
                 
                 #if an electronic energy is found
                 if Eelec:
@@ -439,11 +442,11 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
             #did they get to the point where they calcualted vib freqs? Sometimes the job terminates due to walltime during the CHELPG charge calculation step
             #We can check for this to see if a non-None ZPE was returned.
             #ZPE requires the extraction of all vib frequencies, and will only be updated to a non-None value if vib freqs are found. 
-            if thermochem_flag and ZPE:
-                abnormal_term_wVibs_list.append(filename)
+            if thermochem_flag and ZPE and not normal_term:
+                abnormal_term_wVibs_list.append(os.path.basename(filename))
 
             else:
-                abnormal_term_list.append(filename)
+                abnormal_term_list.append(os.path.basename(filename))
 
             #if the job is a single point energy calculation did not finish
             if not thermochem_flag and not Eelec:
@@ -529,22 +532,58 @@ def ORCA_Thermochem_Calculator(directory, T = 298.15, p = 101325., vib_scl = 1.,
     df.to_csv(output_csv, index=False)
 
     #Inform users via the print window of any abnormal terminations, missing thermochemistry, and imaginary frequencies
-    if len(thermochem_not_requested) > 0:
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Vibrational frequencies were not requested from the following files; N/A is being written as a placeholder for relevant quantities:\n{", ".join(thermochem_not_requested)}.\n')
+    timestamp = datetime.now().strftime("[ %H:%M:%S ]")
 
-    if len(abnormal_term_list) > 0:
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} The following files did not terminate normally, and consequently, will have "N/A" being written in place of missing values:\n{", ".join(abnormal_term_list)}.\n')
-    
-    if len(abnormal_term_wVibs_list) > 0:
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Of the files that did not terminate normally, the following did contain vibrational frequencies, and thus, likely reached walltime during a subsequent calculation step (e.g., CHELPG charge calcualtion):\n{", ".join(abnormal_term_wVibs_list)}.\n')
-    
-    if len(master_imag_freq_list) > 0:
-        print(f'{datetime.now().strftime("[ %H:%M:%S ]")} {len(master_imag_freq_list)} file(s) contain imaginary frequencies:')
+    if thermochem_not_requested:
+        print(
+            f'{timestamp} Vibrational frequencies were not requested from the following files; '
+            'N/A is being written as a placeholder for relevant quantities:\n'
+            f'{", ".join(thermochem_not_requested)}\n'
+        )
+        print('----')
+
+    if abnormal_term_list:
+        print(
+            f'{timestamp} The following files did not terminate normally and will have "N/A" '
+            'written in place of missing values:\n'
+            f'{", ".join(abnormal_term_list)}\n'
+        )
+        print('----')
+
+    if abnormal_term_wVibs_list:
+        print(
+            f'{timestamp} Of the files that did not terminate normally, the following did contain '
+            'vibrational frequencies and likely reached walltime during a subsequent calculation '
+            'step (e.g., CHELPG charge calculation):\n'
+            f'{", ".join(abnormal_term_wVibs_list)}\n'
+        )
+        print('----')
+
+    if master_imag_freq_list:
+        print(
+            f'{timestamp} {len(master_imag_freq_list)} file(s) contain imaginary frequencies:'
+        )
         for filename, imag_freq in master_imag_freq_list:
             print(f'{filename}: {imag_freq}')
+        print('----')
 
-    print(f'{datetime.now().strftime("[ %H:%M:%S ]")} Electronic energies, thermochemistry, and molecular properties have been extracted from {len(filenames)} ORCA .out files in {np.round(time.time() - start,2)} seconds.')
+    if error_but_normal_term:
+        print(
+            f'{timestamp} {len(normal_term_with_errors)} file(s) terminated "normally" but contain '
+            'errors. Inspect the output files carefully for the "Error !!!" string. This typically '
+            'occurs in compound jobs where the first optimization cycle reached the maximum number '
+            'of steps without converging, likely caused by optimization from a bad starting geometry:\n'
+            f'{", ".join(normal_term_with_errors)}'
+        )
+        print('----')
 
+    print(
+        f'{timestamp} Electronic energies, thermochemistry, and molecular properties have been '
+        f'extracted from {len(filenames)} ORCA .out files in '
+        f'{np.round(time.time() - start, 2)} seconds.'
+    )
+    print('----')
+    
 #external testing
 if __name__ == '__main__':
 
